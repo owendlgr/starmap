@@ -128,7 +128,7 @@ function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.Shad
 // ── Main GaiaField component ──────────────────────────────
 export function GaiaField() {
   const { gl } = useThree();
-  const { theme, zoomTarget } = useStore();
+  const { theme } = useStore();
   const [chunks, setChunks] = useState<ChunkData[]>([]);
   const loadedRef = useRef(false);
 
@@ -184,9 +184,7 @@ export function GaiaField() {
       .catch(() => {}); // no Gaia data yet — silent
   }, []);
 
-  // LOD: hide Gaia stars when zoomed far out (they'd be invisible specks)
-  // Show only when camera is within 800 pc
-  if (zoomTarget > 800 || chunks.length === 0) return null;
+  if (chunks.length === 0) return null;
 
   return (
     <>
