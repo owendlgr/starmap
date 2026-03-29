@@ -197,7 +197,8 @@ const SCALE_OPTIONS: { value: ScaleUnit; label: string }[] = [
 
 export function NavBar() {
   const {
-    showStars, showGalaxies, showNebulae, showClusters, toggleLayer,
+    showHipparcos, showExoplanets, showGaia, showConstellations,
+    setShowHipparcos, setShowExoplanets, setShowGaia, setShowConstellations,
     scaleUnit, setScaleUnit,
     mode, setMode,
     showLabels, setShowLabels,
@@ -247,16 +248,18 @@ export function NavBar() {
         {/* Layers */}
         <div className="navbar-section">
           <span className="navbar-label">Layers</span>
-          {([
-            ['stars',    showStars,    '★ Stars'],
-            ['galaxies', showGalaxies, '⬡ Galaxies'],
-            ['nebulae',  showNebulae,  '◎ Nebulae'],
-            ['clusters', showClusters, '· Clusters'],
-          ] as const).map(([id, active, label]) => (
-            <button key={id} className={`nav-btn ${active ? 'on' : ''}`} onClick={() => toggleLayer(id)}>
-              {label}
-            </button>
-          ))}
+          <button className={`nav-btn ${showHipparcos ? 'on' : ''}`} onClick={() => setShowHipparcos(!showHipparcos)}>
+            ★ Hipparcos
+          </button>
+          <button className={`nav-btn ${showExoplanets ? 'on' : ''}`} onClick={() => setShowExoplanets(!showExoplanets)}>
+            ◎ Exo Hosts
+          </button>
+          <button className={`nav-btn ${showGaia ? 'on' : ''}`} onClick={() => setShowGaia(!showGaia)}>
+            · Gaia DR3
+          </button>
+          <button className={`nav-btn ${showConstellations ? 'on' : ''}`} onClick={() => setShowConstellations(!showConstellations)}>
+            ⌖ Lines
+          </button>
         </div>
 
         <div className="navbar-sep" />

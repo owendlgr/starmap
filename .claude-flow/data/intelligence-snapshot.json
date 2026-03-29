@@ -1,0 +1,222 @@
+[
+  {
+    "timestamp": 1774822471986,
+    "nodes": 14,
+    "edges": 9,
+    "pageRankSum": 0.9999999999999998,
+    "confidences": [
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "accessCounts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "topPatterns": [
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 2)",
+        "confidence": 0.5,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 3)",
+        "confidence": 0.5,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 4)",
+        "confidence": 0.5,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 5)",
+        "confidence": 0.5,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 6)",
+        "confidence": 0.5,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--co",
+        "summary": "Completed as of 2026-03-28 (continued)",
+        "confidence": 0.5,
+        "pageRank": 0.10223770992671834,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-open---potential-next-items--n",
+        "summary": "Open / Potential Next Items (non-technical)",
+        "confidence": 0.5,
+        "pageRank": 0.09529425961695467,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-environment-variables-needed-o",
+        "summary": "Environment Variables Needed on Vercel",
+        "confidence": 0.5,
+        "pageRank": 0.08253452552592037,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28",
+        "summary": "Completed as of 2026-03-28",
+        "confidence": 0.5,
+        "pageRank": 0.0593542664083054,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.03208337821059276,
+        "accessCount": 0
+      }
+    ]
+  },
+  {
+    "timestamp": 1774825721743,
+    "nodes": 14,
+    "edges": 9,
+    "pageRankSum": 0.9999999999999998,
+    "confidences": [
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.7500000000000002,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5,
+      0.5
+    ],
+    "accessCounts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      5,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "topPatterns": [
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 2)",
+        "confidence": 0.7500000000000002,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 5
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 3)",
+        "confidence": 0.7500000000000002,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 5
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 4)",
+        "confidence": 0.7500000000000002,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 5
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 5)",
+        "confidence": 0.7500000000000002,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 5
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+        "summary": "Completed as of 2026-03-28 (session 6)",
+        "confidence": 0.7500000000000002,
+        "pageRank": 0.37182883462676636,
+        "accessCount": 5
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28--co",
+        "summary": "Completed as of 2026-03-28 (continued)",
+        "confidence": 0.5,
+        "pageRank": 0.10223770992671834,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-open---potential-next-items--n",
+        "summary": "Open / Potential Next Items (non-technical)",
+        "confidence": 0.5,
+        "pageRank": 0.09529425961695467,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-environment-variables-needed-o",
+        "summary": "Environment Variables Needed on Vercel",
+        "confidence": 0.5,
+        "pageRank": 0.08253452552592037,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-project_terra-completed-as-of-2026-03-28",
+        "summary": "Completed as of 2026-03-28",
+        "confidence": 0.5,
+        "pageRank": 0.0593542664083054,
+        "accessCount": 0
+      },
+      {
+        "id": "mem-MEMORY-memory-index",
+        "summary": "Memory Index",
+        "confidence": 0.5,
+        "pageRank": 0.03208337821059276,
+        "accessCount": 0
+      }
+    ]
+  }
+]

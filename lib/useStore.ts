@@ -15,11 +15,14 @@ interface StoreState {
   mode: InteractionMode;
   setMode: (m: InteractionMode) => void;
 
-  showStars: boolean;
-  showGalaxies: boolean;
-  showNebulae: boolean;
-  showClusters: boolean;
-  toggleLayer: (layer: 'stars' | 'galaxies' | 'nebulae' | 'clusters') => void;
+  showHipparcos: boolean;
+  showExoplanets: boolean;
+  showGaia: boolean;
+  showConstellations: boolean;
+  setShowHipparcos: (v: boolean) => void;
+  setShowExoplanets: (v: boolean) => void;
+  setShowGaia: (v: boolean) => void;
+  setShowConstellations: (v: boolean) => void;
 
   scaleUnit: ScaleUnit;
   setScaleUnit: (u: ScaleUnit) => void;
@@ -77,16 +80,14 @@ export const useStore = create<StoreState>((set) => ({
   mode: 'explore',
   setMode: (m) => set({ mode: m }),
 
-  showStars: true,
-  showGalaxies: true,
-  showNebulae: true,
-  showClusters: true,
-  toggleLayer: (layer) => set(state => ({
-    showStars:    layer === 'stars'    ? !state.showStars    : state.showStars,
-    showGalaxies: layer === 'galaxies' ? !state.showGalaxies : state.showGalaxies,
-    showNebulae:  layer === 'nebulae'  ? !state.showNebulae  : state.showNebulae,
-    showClusters: layer === 'clusters' ? !state.showClusters : state.showClusters,
-  })),
+  showHipparcos: true,
+  showExoplanets: true,
+  showGaia: true,
+  showConstellations: false,
+  setShowHipparcos: (v) => set({ showHipparcos: v }),
+  setShowExoplanets: (v) => set({ showExoplanets: v }),
+  setShowGaia: (v) => set({ showGaia: v }),
+  setShowConstellations: (v) => set({ showConstellations: v }),
 
   scaleUnit: 'ly',
   setScaleUnit: (u) => set({ scaleUnit: u }),

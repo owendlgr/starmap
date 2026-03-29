@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "updatedAt": 1774806728936,
-  "nodeCount": 13,
+  "updatedAt": 1774825864884,
+  "nodeCount": 14,
   "nodes": {
     "mem-MEMORY-memory-index": {
       "id": "mem-MEMORY-memory-index",
@@ -93,6 +93,13 @@
       "confidence": 0.5,
       "accessCount": 0,
       "createdAt": 1774806728932
+    },
+    "insight-1774822471978-fb97": {
+      "id": "insight-1774822471978-fb97",
+      "category": "insights",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774822471978
     }
   },
   "edges": [
@@ -152,18 +159,19 @@
     }
   ],
   "pageRanks": {
-    "mem-MEMORY-memory-index": 0.03314683595206687,
-    "mem-project_terra----": 0.03314683595206687,
-    "mem-project_terra-completed-as-of-2026-03-28": 0.061321674229882425,
-    "mem-project_terra-environment-variables-needed-o": 0.08527031333122902,
-    "mem-project_terra-completed-as-of-2026-03-28--co": 0.10562664906838079,
-    "mem-project_terra-completed-as-of-2026-03-28--se": 0.3841537600347612,
-    "mem-project_terra-open---potential-next-items--n": 0.09845291571921186,
-    "mem-user_profile----": 0.03314683595206687,
-    "mem-MEMORY-memories": 0.03314683595206687,
-    "mem-project_cms_plan----": 0.03314683595206687,
-    "mem-project_map_creator----": 0.03314683595206687,
-    "mem-project_platform_shift----": 0.03314683595206687,
-    "mem-project_topics_taxonomy----": 0.03314683595206687
+    "mem-MEMORY-memory-index": 0.03208337821059276,
+    "mem-project_terra----": 0.03208337821059276,
+    "mem-project_terra-completed-as-of-2026-03-28": 0.0593542664083054,
+    "mem-project_terra-environment-variables-needed-o": 0.08253452552592037,
+    "mem-project_terra-completed-as-of-2026-03-28--co": 0.10223770992671834,
+    "mem-project_terra-completed-as-of-2026-03-28--se": 0.37182883462676636,
+    "mem-project_terra-open---potential-next-items--n": 0.09529425961695467,
+    "mem-user_profile----": 0.03208337821059276,
+    "mem-MEMORY-memories": 0.03208337821059276,
+    "mem-project_cms_plan----": 0.03208337821059276,
+    "mem-project_map_creator----": 0.03208337821059276,
+    "mem-project_platform_shift----": 0.03208337821059276,
+    "mem-project_topics_taxonomy----": 0.03208337821059276,
+    "insight-1774822471978-fb97": 0.03208337821059276
   }
 }

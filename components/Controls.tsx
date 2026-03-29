@@ -10,7 +10,8 @@ const SCALE_OPTIONS: { value: ScaleUnit; label: string }[] = [
 
 export function Controls() {
   const {
-    showStars, showGalaxies, showNebulae, showClusters, toggleLayer,
+    showHipparcos, showExoplanets, showGaia, showConstellations,
+    setShowHipparcos, setShowExoplanets, setShowGaia, setShowConstellations,
     scaleUnit, setScaleUnit,
     stars,
   } = useStore();
@@ -25,20 +26,10 @@ export function Controls() {
       {/* Layer toggles */}
       <div className="ctrl-section-label">Layers</div>
       <div className="ctrl-layers">
-        {([
-          ['stars',    showStars,    '★ Stars'],
-          ['galaxies', showGalaxies, '⬡ Galaxies'],
-          ['nebulae',  showNebulae,  '◎ Nebulae'],
-          ['clusters', showClusters, '· Clusters'],
-        ] as const).map(([id, active, label]) => (
-          <button
-            key={id}
-            className={`ctrl-layer-btn ${active ? 'on' : 'off'}`}
-            onClick={() => toggleLayer(id)}
-          >
-            {label}
-          </button>
-        ))}
+        <button className={`ctrl-layer-btn ${showHipparcos ? 'on' : 'off'}`} onClick={() => setShowHipparcos(!showHipparcos)}>★ Hipparcos</button>
+        <button className={`ctrl-layer-btn ${showExoplanets ? 'on' : 'off'}`} onClick={() => setShowExoplanets(!showExoplanets)}>◎ Exo Hosts</button>
+        <button className={`ctrl-layer-btn ${showGaia ? 'on' : 'off'}`} onClick={() => setShowGaia(!showGaia)}>· Gaia DR3</button>
+        <button className={`ctrl-layer-btn ${showConstellations ? 'on' : 'off'}`} onClick={() => setShowConstellations(!showConstellations)}>⌖ Lines</button>
       </div>
 
       <div className="ctrl-divider" />

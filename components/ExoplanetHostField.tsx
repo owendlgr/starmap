@@ -42,7 +42,7 @@ interface Props {
 
 export function ExoplanetHostField({ stars }: Props) {
   const { gl } = useThree();
-  const { setSelected, mode, setMeasureTarget, theme } = useStore();
+  const { setSelected, mode, setMeasureTarget, theme, showExoplanets } = useStore();
 
   const [geometry, idMap] = useMemo(() => {
     const n = stars.length;
@@ -94,5 +94,6 @@ export function ExoplanetHostField({ stars }: Props) {
     if (mode === 'measure') setMeasureTarget(star); else setSelected(star);
   }, [idMap, mode, setSelected, setMeasureTarget]);
 
+  if (!showExoplanets) return null;
   return <points geometry={geometry} material={material} onClick={handleClick} />;
 }

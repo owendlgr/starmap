@@ -128,7 +128,7 @@ function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.Shad
 // ── Main GaiaField component ──────────────────────────────
 export function GaiaField() {
   const { gl } = useThree();
-  const { theme } = useStore();
+  const { theme, showGaia } = useStore();
   const [chunks, setChunks] = useState<ChunkData[]>([]);
   const loadedRef = useRef(false);
 
@@ -184,7 +184,7 @@ export function GaiaField() {
       .catch(() => {}); // no Gaia data yet — silent
   }, []);
 
-  if (chunks.length === 0) return null;
+  if (chunks.length === 0 || !showGaia) return null;
 
   return (
     <>

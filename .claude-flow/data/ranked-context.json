@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "computedAt": 1774806728936,
+  "computedAt": 1774825864884,
   "entries": [
     {
       "id": "mem-project_terra-completed-as-of-2026-03-28--se",
@@ -8,7 +8,7 @@
       "summary": "Completed as of 2026-03-28 (session 2)",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.3841537600347612,
+      "pageRank": 0.37182883462676636,
       "accessCount": 0,
       "words": [
         "email",
@@ -73,7 +73,7 @@
       "summary": "Completed as of 2026-03-28 (session 3)",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.3841537600347612,
+      "pageRank": 0.37182883462676636,
       "accessCount": 0,
       "words": [
         "src",
@@ -140,7 +140,7 @@
       "summary": "Completed as of 2026-03-28 (session 4)",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.3841537600347612,
+      "pageRank": 0.37182883462676636,
       "accessCount": 0,
       "words": [
         "membership",
@@ -220,7 +220,7 @@
       "summary": "Completed as of 2026-03-28 (session 5)",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.3841537600347612,
+      "pageRank": 0.37182883462676636,
       "accessCount": 0,
       "words": [
         "weekly",
@@ -274,7 +274,7 @@
       "summary": "Completed as of 2026-03-28 (session 6)",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.3841537600347612,
+      "pageRank": 0.37182883462676636,
       "accessCount": 0,
       "words": [
         "globe",
@@ -346,7 +346,7 @@
       "summary": "Completed as of 2026-03-28 (continued)",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.10562664906838079,
+      "pageRank": 0.10223770992671834,
       "accessCount": 0,
       "words": [
         "comment",
@@ -421,7 +421,7 @@
       "summary": "Open / Potential Next Items (non-technical)",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.09845291571921186,
+      "pageRank": 0.09529425961695467,
       "accessCount": 0,
       "words": [
         "add",
@@ -495,7 +495,7 @@
       "summary": "Environment Variables Needed on Vercel",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.08527031333122902,
+      "pageRank": 0.08253452552592037,
       "accessCount": 0,
       "words": [
         "admin",
@@ -543,7 +543,7 @@
       "summary": "Completed as of 2026-03-28",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.061321674229882425,
+      "pageRank": 0.0593542664083054,
       "accessCount": 0,
       "words": [
         "full",
@@ -613,7 +613,7 @@
       "summary": "Memory Index",
       "category": "core",
       "confidence": 0.5,
-      "pageRank": 0.03314683595206687,
+      "pageRank": 0.03208337821059276,
       "accessCount": 0,
       "words": [
         "user",
@@ -651,7 +651,7 @@
       "summary": "---",
       "category": "project_terra",
       "confidence": 0.5,
-      "pageRank": 0.03314683595206687,
+      "pageRank": 0.03208337821059276,
       "accessCount": 0,
       "words": [
         "name",
@@ -698,7 +698,7 @@
       "summary": "---",
       "category": "user_profile",
       "confidence": 0.5,
-      "pageRank": 0.03314683595206687,
+      "pageRank": 0.03208337821059276,
       "accessCount": 0,
       "words": [
         "name",
@@ -755,7 +755,7 @@
       "summary": "Memories",
       "category": "core",
       "confidence": 0.5,
-      "pageRank": 0.03314683595206687,
+      "pageRank": 0.03208337821059276,
       "accessCount": 0,
       "words": [
         "project",
@@ -823,7 +823,7 @@
       "summary": "---",
       "category": "project_cms_plan",
       "confidence": 0.5,
-      "pageRank": 0.03314683595206687,
+      "pageRank": 0.03208337821059276,
       "accessCount": 0,
       "words": [
         "name",
@@ -896,7 +896,7 @@
       "summary": "---",
       "category": "project_map_creator",
       "confidence": 0.5,
-      "pageRank": 0.03314683595206687,
+      "pageRank": 0.03208337821059276,
       "accessCount": 0,
       "words": [
         "name",
@@ -970,7 +970,7 @@
       "summary": "---",
       "category": "project_platform_shift",
       "confidence": 0.5,
-      "pageRank": 0.03314683595206687,
+      "pageRank": 0.03208337821059276,
       "accessCount": 0,
       "words": [
         "name",
@@ -1033,7 +1033,7 @@
       "summary": "---",
       "category": "project_topics_taxonomy",
       "confidence": 0.5,
-      "pageRank": 0.03314683595206687,
+      "pageRank": 0.03208337821059276,
       "accessCount": 0,
       "words": [
         "name",
@@ -1089,6 +1089,31 @@
         "conflict",
         "humanita",
         "---"
+      ]
+    },
+    {
+      "id": "insight-1774822471978-fb97",
+      "content": "File unknown was edited 61 times this session — likely a hot path worth monitoring.",
+      "summary": "Frequently edited: unknown (61x)",
+      "category": "insights",
+      "confidence": 0.5,
+      "pageRank": 0.03208337821059276,
+      "accessCount": 0,
+      "words": [
+        "file",
+        "unknown",
+        "edited",
+        "times",
+        "session",
+        "likely",
+        "hot",
+        "path",
+        "worth",
+        "monitoring",
+        "frequently",
+        "edited",
+        "unknown",
+        "61x"
       ]
     }
   ]

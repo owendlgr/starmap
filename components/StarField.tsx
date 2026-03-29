@@ -41,16 +41,10 @@ interface Props {
 
 export function StarField({ stars, onSelect }: Props) {
   const { gl } = useThree();
-  const { mode, setMeasureTarget, showStars, showGalaxies, showNebulae, showClusters, theme } = useStore();
+  const { mode, setMeasureTarget, showHipparcos, theme } = useStore();
   const pointsRef = useRef<THREE.Points>(null);
 
-  const filtered = useMemo(() => stars.filter(s => {
-    const t = s.type?.toLowerCase() || '';
-    if (t.includes('galaxy')) return showGalaxies;
-    if (t.includes('nebula')) return showNebulae;
-    if (t.includes('cluster') || t.includes('globular')) return showClusters;
-    return showStars;
-  }), [stars, showStars, showGalaxies, showNebulae, showClusters]);
+  const filtered = useMemo(() => showHipparcos ? stars : [], [stars, showHipparcos]);
 
   const [geometry, idMap] = useMemo(() => {
     const geo = new THREE.BufferGeometry();

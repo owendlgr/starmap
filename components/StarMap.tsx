@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { StarField } from './StarField';
 import { ExoplanetHostField } from './ExoplanetHostField';
 import { GaiaField } from './GaiaField';
+import { ConstellationLines } from './ConstellationLines';
 import { SelectionMarker, MeasureLine } from './SelectionMarker';
 import { SceneGrid } from './SceneGrid';
 import { useStore } from '@/lib/useStore';
@@ -273,6 +274,20 @@ function TwoDDotsCanvas({
   );
 }
 
+// ── Raycaster threshold scaler ────────────────────────────
+// Prevents accidentally clicking stars far away when zoomed in.
+// Scales the Points pick radius proportionally to camera distance.
+function RaycasterScaler() {
+  const { raycaster, camera } = useThree();
+  useFrame(() => {
+    const dist = camera.position.length();
+    (raycaster.params as { Points?: { threshold: number } }).Points = {
+      threshold: Math.max(0.08, dist * 0.004),
+    };
+  });
+  return null;
+}
+
 // ── 3D scene ──────────────────────────────────────────────
 function Scene({ exoHosts }: { exoHosts: Star[] }) {
   const { stars, selectedStar, measureTarget, setSelected, theme } = useStore();
@@ -282,11 +297,13 @@ function Scene({ exoHosts }: { exoHosts: Star[] }) {
       <color attach="background" args={[bg]} />
       <fog attach="fog" args={[bg, 80000, 200000]} />
       <CameraManager />
+      <RaycasterScaler />
       <SceneGrid />
       <SolarMarker />
       <StarField stars={stars} onSelect={setSelected} />
       {exoHosts.length > 0 && <ExoplanetHostField stars={exoHosts} />}
       <GaiaField />
+      <ConstellationLines stars={stars} />
       <StarLabels stars={stars} />
       <DepthLines stars={stars} />
       {selectedStar && <SelectionMarker star={selectedStar} color="#5a3e1e" />}
@@ -310,6 +327,8 @@ function Scene2D({
     <>
       <color attach="background" args={[bg]} />
       <CameraManager />
+      <RaycasterScaler />
+      <GaiaField />
       <TwoDDotsCanvas allStars={stars} exoHosts={exoHosts} projRef={projRef} />
     </>
   );
