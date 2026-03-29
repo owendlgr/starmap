@@ -35,6 +35,9 @@ interface StoreState {
   showSources: boolean;
   setShowSources: (v: boolean) => void;
 
+  exoHostCount: number;
+  setExoHostCount: (n: number) => void;
+
   // Camera controls
   cameraResetTick: number;
   triggerCameraReset: () => void;
@@ -84,6 +87,9 @@ export const useStore = create<StoreState>((set) => ({
   setShowSearch: (v) => set({ showSearch: v }),
   showSources: false,
   setShowSources: (v) => set({ showSources: v }),
+
+  exoHostCount: 0,
+  setExoHostCount: (n) => set({ exoHostCount: n }),
 
   cameraResetTick: 0,
   triggerCameraReset: () => set(s => ({ cameraResetTick: s.cameraResetTick + 1 })),

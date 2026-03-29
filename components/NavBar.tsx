@@ -163,6 +163,7 @@ export function NavBar() {
     showSources, setShowSources,
     stars,
     triggerCameraReset,
+    exoHostCount,
   } = useStore();
 
   const [extraFiles, setExtraFiles] = useState<string[]>([]);
@@ -250,7 +251,22 @@ export function NavBar() {
 
         <div className="navbar-spacer" />
 
-        <span className="nav-stat">{stars.length.toLocaleString()} objects</span>
+        {/* Legend */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginRight: '0.5rem' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--chrome-muted)', fontWeight: 'bold' }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1a1208', display: 'inline-block', flexShrink: 0 }} />
+            Star
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--chrome-muted)', fontWeight: 'bold' }}>
+            <span style={{ width: 9, height: 9, borderRadius: '50%', border: '1.5px solid #1a1208', display: 'inline-block', flexShrink: 0 }} />
+            Exoplanet Host
+          </span>
+        </div>
+        <div className="navbar-sep" />
+        <span className="nav-stat">
+          {stars.length.toLocaleString()} stars
+          {exoHostCount > 0 && ` · ${exoHostCount.toLocaleString()} exo hosts`}
+        </span>
         <div className="navbar-sep" />
         <button className="nav-btn" onClick={() => setShowSources(true)}>Sources</button>
       </nav>

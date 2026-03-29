@@ -1,9 +1,10 @@
 'use client';
-import { useEffect, Suspense, useRef, useMemo } from 'react';
+import { useEffect, Suspense, useRef, useMemo, useState } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { StarField } from './StarField';
+import { ExoplanetHostField } from './ExoplanetHostField';
 import { SelectionMarker, MeasureLine } from './SelectionMarker';
 import { SceneGrid } from './SceneGrid';
 import { useStore } from '@/lib/useStore';
@@ -29,6 +30,23 @@ function DataLoader() {
     load('faint', 1200);
     load('deep', 3000);
   }, [addStars]);
+  return null;
+}
+
+function ExoplanetLoader({ onLoad }: { onLoad: (stars: Star[]) => void }) {
+  const { setExoHostCount } = useStore();
+  useEffect(() => {
+    fetch('/api/exoplanet-stars')
+      .then(r => r.json())
+      .then((d: { stars: Star[] }) => {
+        if (d.stars?.length) {
+          onLoad(d.stars);
+          setExoHostCount(d.stars.length);
+        }
+      })
+      .catch(() => {/* silent */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return null;
 }
 
@@ -160,7 +178,7 @@ function DepthLines({ stars }: { stars: Star[] }) {
   );
 }
 
-function Scene() {
+function Scene({ exoHosts }: { exoHosts: Star[] }) {
   const { stars, selectedStar, measureTarget, setSelected } = useStore();
   return (
     <>
@@ -168,6 +186,7 @@ function Scene() {
       <SceneGrid />
       <SolarMarker />
       <StarField stars={stars} onSelect={setSelected} />
+      {exoHosts.length > 0 && <ExoplanetHostField stars={exoHosts} />}
       <StarLabels stars={stars} />
       <DepthLines stars={stars} />
       {selectedStar && <SelectionMarker star={selectedStar} color="#5a3e1e" />}
@@ -180,9 +199,11 @@ function Scene() {
 }
 
 export function StarMap() {
+  const [exoHosts, setExoHosts] = useState<Star[]>([]);
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
       <DataLoader />
+      <ExoplanetLoader onLoad={setExoHosts} />
       <Canvas
         camera={{ fov: 60, near: 0.001, far: 200000 }}
         gl={{
@@ -197,7 +218,7 @@ export function StarMap() {
         <color attach="background" args={['#f0ece0']} />
         <fog attach="fog" args={['#f0ece0', 80000, 200000]} />
         <Suspense fallback={null}>
-          <Scene />
+          <Scene exoHosts={exoHosts} />
         </Suspense>
       </Canvas>
     </div>
