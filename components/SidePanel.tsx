@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { useStore } from '@/lib/useStore';
 import {
   formatDistance, formatRA, formatDec, distanceBetween,
@@ -6,6 +7,7 @@ import {
   estimateTemperature, formatTemperature, estimateMass, estimateAge,
   absoluteMagnitude, parallaxFromDist, getConstellation, bvToColor,
 } from '@/lib/coordinates';
+import type { Planet } from '@/app/api/exoplanets/route';
 
 function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
@@ -20,15 +22,68 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div className="side-section">
       <div className="side-section-title">{title}</div>
-      <div className="side-grid">{children}</div>
+      {children}
     </div>
+  );
+}
+
+function PlanetsSection({ starName }: { starName: string }) {
+  const [planets, setPlanets] = useState<Planet[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    setPlanets(null);
+    fetch(`/api/exoplanets?host=${encodeURIComponent(starName)}`)
+      .then(r => r.json())
+      .then((d: { planets: Planet[] }) => { setPlanets(d.planets); setLoading(false); })
+      .catch(() => { setPlanets([]); setLoading(false); });
+  }, [starName]);
+
+  return (
+    <Section title={`Known Exoplanets — ${loading ? '…' : (planets?.length ?? 0)} found`}>
+      {loading && <div className="planet-none">Querying NASA archive…</div>}
+      {!loading && (!planets || planets.length === 0) && (
+        <div className="planet-none">No confirmed exoplanets on record for this host star.</div>
+      )}
+      {!loading && planets && planets.length > 0 && (
+        <table className="planet-table">
+          <thead>
+            <tr>
+              <th>Planet</th>
+              <th>Period</th>
+              <th>Radius</th>
+              <th>Mass</th>
+              <th>Method</th>
+              <th>Year</th>
+            </tr>
+          </thead>
+          <tbody>
+            {planets.map(p => (
+              <tr key={p.name}>
+                <td>{p.name}</td>
+                <td>{p.orbitalPeriod != null ? `${p.orbitalPeriod.toFixed(1)} d` : '—'}</td>
+                <td>{p.radiusEarth != null ? `${p.radiusEarth.toFixed(2)} R⊕` : '—'}</td>
+                <td>{p.massEarth != null ? `${p.massEarth.toFixed(2)} M⊕` : '—'}</td>
+                <td style={{ fontSize: '0.68rem' }}>{p.discMethod || '—'}</td>
+                <td>{p.discYear || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {!loading && planets && planets.length > 0 && (
+        <div style={{ marginTop: '0.6rem', fontSize: '0.65rem', color: 'var(--chrome-muted)', fontFamily: 'var(--font-mono)', fontWeight: 'bold', fontStyle: 'italic', lineHeight: 1.5 }}>
+          Source: NASA Exoplanet Archive · R⊕ = Earth radii · M⊕ = Earth masses
+        </div>
+      )}
+    </Section>
   );
 }
 
 export function SidePanel() {
   const {
-    selectedStar,
-    measureTarget,
+    selectedStar, measureTarget,
     scaleUnit,
     setSelected, setMeasureTarget,
     mode, setMode,
@@ -45,128 +100,133 @@ export function SidePanel() {
             <button
               className="side-panel-close"
               onClick={() => { setSelected(null); setMeasureTarget(null); }}
-            >
-              ✕
-            </button>
+            >✕</button>
 
             <div className="side-name">{selectedStar.name}</div>
             <div className="side-type">{selectedStar.type}</div>
 
-            {/* Spectral color swatch — this is where color lives */}
             <div className="side-color-band">
-              <div
-                className="side-color-swatch"
-                style={{ background: bvToColor(selectedStar.bv) }}
-              />
+              <div className="side-color-swatch" style={{ background: bvToColor(selectedStar.bv) }} />
               <span className="side-color-label">
-                Spectral class {selectedStar.spectral || '—'} &nbsp;·&nbsp; B−V {isFinite(selectedStar.bv) ? selectedStar.bv.toFixed(2) : '—'}
+                Class {selectedStar.spectral || '—'}&nbsp;·&nbsp;B−V {isFinite(selectedStar.bv) ? selectedStar.bv.toFixed(2) : '—'}
               </span>
             </div>
           </div>
 
           <div className="side-panel-body">
 
-            {/* ── Distance & Position ── */}
+            {/* Distance & Position */}
             <Section title="Distance & Position">
-              <Row label="Distance"
-                value={selectedStar.dist_pc === 0 ? 'Here (Sol)' : formatDistance(selectedStar.dist_pc, scaleUnit)} />
-              <Row label="Distance (ly)"
-                value={selectedStar.dist_pc === 0 ? '0' : (selectedStar.dist_pc * 3.26156).toFixed(2) + ' ly'} />
-              <Row label="Distance (pc)"
-                value={selectedStar.dist_pc === 0 ? '0' : selectedStar.dist_pc.toFixed(4) + ' pc'} />
-              <Row label="Parallax"
-                value={parallaxFromDist(selectedStar.dist_pc)} mono />
-              <Row label="Constellation"
-                value={getConstellation(selectedStar.ra, selectedStar.dec)} />
+              <div className="side-grid">
+                <Row label="Distance"
+                  value={selectedStar.dist_pc === 0 ? 'Here — Sol' : formatDistance(selectedStar.dist_pc, scaleUnit)} />
+                <Row label="Light Years"
+                  value={selectedStar.dist_pc === 0 ? '0 ly' : (selectedStar.dist_pc * 3.26156).toFixed(2) + ' ly'} />
+                <Row label="Parsecs"
+                  value={selectedStar.dist_pc === 0 ? '0 pc' : selectedStar.dist_pc.toFixed(4) + ' pc'} />
+                <Row label="Parallax"   value={parallaxFromDist(selectedStar.dist_pc)} mono />
+                <Row label="Constellation" value={getConstellation(selectedStar.ra, selectedStar.dec)} />
+              </div>
             </Section>
 
-            {/* ── Coordinates ── */}
-            <Section title="Equatorial Coordinates">
-              <Row label="RA"  value={formatRA(selectedStar.ra)}   mono />
-              <Row label="Dec" value={formatDec(selectedStar.dec)} mono />
-              <Row label="RA (°)"  value={selectedStar.ra.toFixed(4) + '°'}  mono />
-              <Row label="Dec (°)" value={selectedStar.dec.toFixed(4) + '°'} mono />
-            </Section>
-
-            {/* ── Photometry ── */}
-            <Section title="Photometry">
-              <Row label="App. Magnitude"  value={selectedStar.mag.toFixed(2)} mono />
-              <Row label="Abs. Magnitude"
-                value={selectedStar.dist_pc > 0
-                  ? absoluteMagnitude(selectedStar.mag, selectedStar.dist_pc)
-                  : selectedStar.mag.toFixed(2)}
-                mono />
-              <Row label="B−V Color Index"
-                value={isFinite(selectedStar.bv) ? selectedStar.bv.toFixed(3) : '—'} mono />
-            </Section>
-
-            {/* ── Physical Properties ── */}
+            {/* Physical Properties */}
             <Section title="Physical Properties">
-              <Row label="Spectral Class" value={selectedStar.spectral || '—'} mono />
-              <Row label="Temperature"
-                value={isFinite(selectedStar.bv)
-                  ? formatTemperature(estimateTemperature(selectedStar.bv))
-                  : '—'} />
-              <Row label="Mass (est.)" value={estimateMass(selectedStar.spectral)} />
-              <Row label="Age (est.)"  value={estimateAge(selectedStar.spectral)} />
-              <Row label="Planet Count" value="Unknown — no exoplanet data loaded" />
-              <Row label="Type" value={selectedStar.type} />
+              <div className="side-grid">
+                <Row label="Spectral Class" value={selectedStar.spectral || '—'} mono />
+                <Row label="Temperature (est.)"
+                  value={isFinite(selectedStar.bv)
+                    ? formatTemperature(estimateTemperature(selectedStar.bv))
+                    : '—'} />
+                <Row label="Mass (est.)"  value={estimateMass(selectedStar.spectral)} />
+                <Row label="Age (est.)"   value={estimateAge(selectedStar.spectral)} />
+                <Row label="B−V Color"
+                  value={isFinite(selectedStar.bv) ? selectedStar.bv.toFixed(3) : '—'} mono />
+                <Row label="Object Type"  value={selectedStar.type} />
+              </div>
             </Section>
 
-            {/* ── Catalog ── */}
+            {/* Photometry */}
+            <Section title="Photometry">
+              <div className="side-grid">
+                <Row label="App. Magnitude" value={selectedStar.mag.toFixed(2)} mono />
+                <Row label="Abs. Magnitude"
+                  value={selectedStar.dist_pc > 0
+                    ? absoluteMagnitude(selectedStar.mag, selectedStar.dist_pc)
+                    : selectedStar.mag.toFixed(2)}
+                  mono />
+              </div>
+            </Section>
+
+            {/* Coordinates */}
+            <Section title="Equatorial Coordinates">
+              <div className="side-grid">
+                <Row label="RA"     value={formatRA(selectedStar.ra)}   mono />
+                <Row label="Dec"    value={formatDec(selectedStar.dec)} mono />
+                <Row label="RA (°)" value={selectedStar.ra.toFixed(4) + '°'} mono />
+                <Row label="Dec (°)" value={selectedStar.dec.toFixed(4) + '°'} mono />
+              </div>
+            </Section>
+
+            {/* Catalog */}
             <Section title="Catalog & Discovery">
-              <Row label="Catalog"    value={selectedStar.catalog || '—'} />
-              <Row label="HIP #"      value={selectedStar.hip > 0 ? selectedStar.hip.toString() : '—'} mono />
-              <Row label="Object ID"  value={selectedStar.id.toString()} mono />
-              <Row label="Data Source" value={selectedStar.hip > 0 ? 'Hipparcos (real coords)' : 'Generated catalog'} />
+              <div className="side-grid">
+                <Row label="Catalog"     value={selectedStar.catalog || '—'} />
+                <Row label="HIP #"       value={selectedStar.hip > 0 ? selectedStar.hip.toString() : '—'} mono />
+                <Row label="Object ID"   value={selectedStar.id.toString()} mono />
+                <Row label="Data Source"
+                  value={selectedStar.hip > 0 ? 'Hipparcos (real coordinates)' : 'Generated catalog'} />
+              </div>
             </Section>
 
-            {/* ── Measure ── */}
+            {/* Exoplanet cross-reference */}
+            <PlanetsSection starName={selectedStar.name} />
+
+            {/* Measure separation */}
             {measureTarget && (
-              <Section title={`Distance to ${measureTarget.name}`}>
-                <Row label="Separation"
-                  value={formatDistance(distanceBetween(selectedStar, measureTarget), scaleUnit)} />
-                <Row label="Separation (ly)"
-                  value={(distanceBetween(selectedStar, measureTarget) * 3.26156).toFixed(2) + ' ly'} />
+              <Section title={`Separation — ${measureTarget.name}`}>
+                <div className="side-grid">
+                  <Row label="Distance"
+                    value={formatDistance(distanceBetween(selectedStar, measureTarget), scaleUnit)} />
+                  <Row label="In ly"
+                    value={(distanceBetween(selectedStar, measureTarget) * 3.26156).toFixed(2) + ' ly'} />
+                </div>
               </Section>
             )}
 
-            {/* ── Travel times ── */}
+            {/* Travel calculator */}
             {showTravelCalc && selectedStar.dist_pc > 0 && (() => {
               const dist = measureTarget
                 ? distanceBetween(selectedStar, measureTarget)
                 : selectedStar.dist_pc;
               const t = calcTravelTime(dist);
+              const dest = measureTarget ? measureTarget.name : selectedStar.name;
               return (
-                <div className="side-section">
-                  <div className="side-section-title">
-                    Travel Time — from Sol to {measureTarget ? measureTarget.name : selectedStar.name}
-                  </div>
+                <Section title={`Travel Time → ${dest}`}>
                   {[
                     ['Speed of light (c)', t.lightspeed_years],
                     ['10% light speed', t.pct10c_years],
                     ['1% light speed', t.pct01c_years],
-                    ['Voyager 1 speed (17 km/s)', t.voyager_years],
-                  ].map(([label, val]) => (
-                    <div className="travel-row-side" key={String(label)}>
-                      <span className="travel-label-side">{String(label)}</span>
+                    ['Voyager 1 (17 km/s)', t.voyager_years],
+                  ].map(([lbl, val]) => (
+                    <div className="travel-row-side" key={String(lbl)}>
+                      <span className="travel-label-side">{String(lbl)}</span>
                       <span className="travel-value-side">{formatTravelTime(Number(val))}</span>
                     </div>
                   ))}
-                  <div style={{ marginTop: '0.6rem', fontSize: '0.65rem', color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontStyle: 'italic' }}>
+                  <div style={{ marginTop: '0.55rem', fontSize: '0.65rem', color: 'var(--chrome-muted)', fontFamily: 'var(--font-mono)', fontWeight: 'bold', fontStyle: 'italic' }}>
                     Relativistic effects not accounted for.
                   </div>
-                </div>
+                </Section>
               );
             })()}
 
-            {/* ── Actions ── */}
+            {/* Actions */}
             <div className="side-actions">
               <button
                 className={`side-action-btn ${mode === 'measure' ? 'active' : ''}`}
                 onClick={() => setMode(mode === 'measure' ? 'explore' : 'measure')}
               >
-                {mode === 'measure' ? '↩ Cancel Measure' : '⟷ Measure to…'}
+                {mode === 'measure' ? '↩ Cancel Measure' : '⟷ Measure To…'}
               </button>
               {selectedStar.dist_pc > 0 && (
                 <button

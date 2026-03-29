@@ -6,23 +6,28 @@ import type { ScaleUnit } from '@/lib/types';
 // ── Sources modal ─────────────────────────────────────────
 const KNOWN_SOURCES = [
   {
+    name: 'NASA Exoplanet Archive (2026)',
+    detail: '~5,600 confirmed exoplanet systems, 39,000+ records. Includes orbital parameters, planetary radius, mass, discovery method, equilibrium temperature, and host star data.',
+    url: 'https://exoplanetarchive.ipac.caltech.edu',
+  },
+  {
     name: 'Hipparcos Catalogue (ESA, 1997)',
-    detail: '~100 named stars with measured parallax, proper motion, and photometry.',
+    detail: '~100 named stars with measured parallax, proper motion, BV photometry, and spectral classification. All positions are real Hipparcos measurements.',
     url: 'https://www.cosmos.esa.int/web/hipparcos',
   },
   {
     name: 'Yale Bright Star Catalogue',
-    detail: 'Standard reference for stars visible to the naked eye (mag < 6.5).',
+    detail: 'Standard reference for stars visible to the naked eye (apparent magnitude < 6.5).',
     url: 'http://tdc-www.harvard.edu/catalogs/bsc5.html',
   },
   {
     name: 'NGC/IC Catalogue',
-    detail: 'New General Catalogue — deep sky objects: galaxies, nebulae, clusters.',
+    detail: 'New General Catalogue — deep sky objects: galaxies, nebulae, and star clusters.',
     url: 'https://www.ngcicproject.org',
   },
   {
-    name: 'Generated background catalog',
-    detail: 'Statistically realistic background stars following galactic disk density distribution. Not from a real survey — used for visual completeness.',
+    name: 'Generated Background Catalog',
+    detail: 'Statistically realistic background stars (~15,000 objects) following galactic disk density distribution. Not from a real survey — generated for visual completeness. Should not be used for scientific analysis.',
     url: null,
   },
 ];
@@ -32,9 +37,8 @@ function SourcesModal({ onClose, extraFiles }: { onClose: () => void; extraFiles
     <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-box">
         <button className="modal-close" onClick={onClose}>✕</button>
-        <div className="modal-title">Data Sources</div>
-        <div className="modal-subtitle">Attribution & Catalog Information</div>
-
+        <div className="modal-title">Data Sources & Attribution</div>
+        <div className="modal-subtitle">Scientific data provenance</div>
         {KNOWN_SOURCES.map(s => (
           <div className="source-entry" key={s.name}>
             <div className="source-name">{s.name}</div>
@@ -42,35 +46,31 @@ function SourcesModal({ onClose, extraFiles }: { onClose: () => void; extraFiles
             {s.url && (
               <div className="source-meta" style={{ marginTop: '0.3rem' }}>
                 <a href={s.url} target="_blank" rel="noopener noreferrer"
-                  style={{ color: 'var(--accent-light)', textDecoration: 'none' }}>{s.url}</a>
+                  style={{ color: 'var(--chrome-accent)', textDecoration: 'none' }}>{s.url}</a>
               </div>
             )}
           </div>
         ))}
-
         {extraFiles.length > 0 && (
-          <>
-            <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--divider)' }}>
-              <div className="source-name">Additional Data Files Detected</div>
-              {extraFiles.map(f => (
-                <div className="source-entry" key={f} style={{ paddingLeft: '0.75rem' }}>
-                  <div className="source-meta">{f} — loaded and cross-referenced</div>
-                </div>
-              ))}
-            </div>
-          </>
+          <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--chrome-border)' }}>
+            <div className="source-name">Additional Data Files</div>
+            {extraFiles.map(f => (
+              <div className="source-entry" key={f} style={{ paddingLeft: '0.75rem' }}>
+                <div className="source-meta">{f}</div>
+              </div>
+            ))}
+          </div>
         )}
-
-        <div style={{ marginTop: '1.5rem', fontSize: '0.7rem', color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontStyle: 'italic' }}>
-          Constellation assignments are approximated from RA/Dec center-point lookup. Mass, temperature, and age figures are statistical estimates derived from spectral classification — not individual measurements.
+        <div style={{ marginTop: '1.5rem', fontSize: '0.7rem', color: 'var(--chrome-muted)', fontFamily: 'var(--font-mono)', fontStyle: 'italic', fontWeight: 'bold', lineHeight: 1.6 }}>
+          Constellation assignments approximate (nearest-center RA/Dec lookup). Mass, temperature, and age are statistical estimates from spectral classification — not individual measurements.
         </div>
       </div>
     </div>
   );
 }
 
-// ── Search ────────────────────────────────────────────────
-function NavSearch() {
+// ── Inline search (rendered inside map-area) ──────────────
+export function NavSearch() {
   const { stars, setSelected, showSearch, setShowSearch } = useStore();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{ id: number; name: string; type: string; mag: number; dist_pc: number }[]>([]);
@@ -82,14 +82,14 @@ function NavSearch() {
         e.preventDefault();
         setShowSearch(true);
       }
-      if (e.key === 'Escape') setShowSearch(false);
+      if (e.key === 'Escape') { setShowSearch(false); setQuery(''); setResults([]); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [showSearch, setShowSearch]);
 
   useEffect(() => {
-    if (showSearch && inputRef.current) inputRef.current.focus();
+    if (showSearch) inputRef.current?.focus();
   }, [showSearch]);
 
   const search = useCallback((q: string) => {
@@ -110,13 +110,7 @@ function NavSearch() {
     if (star) { setSelected(star); setShowSearch(false); setQuery(''); setResults([]); }
   }, [stars, setSelected, setShowSearch]);
 
-  if (!showSearch) {
-    return (
-      <button className="nav-btn" onClick={() => setShowSearch(true)} title="Search (/)">
-        ⌕ Search <kbd style={{ marginLeft: '0.35rem' }}>/</kbd>
-      </button>
-    );
-  }
+  if (!showSearch) return null;
 
   return (
     <div className="search-overlay">
@@ -165,14 +159,14 @@ export function NavBar() {
     mode, setMode,
     showLabels, setShowLabels,
     showDepthLines, setShowDepthLines,
-    showSearch,
+    showSearch, setShowSearch,
     showSources, setShowSources,
     stars,
+    triggerCameraReset,
   } = useStore();
 
   const [extraFiles, setExtraFiles] = useState<string[]>([]);
 
-  // Load extra data sources list when sources modal opens
   useEffect(() => {
     if (!showSources) return;
     fetch('/api/datasources')
@@ -184,16 +178,17 @@ export function NavBar() {
   return (
     <>
       <nav className="navbar">
-        {/* Brand */}
         <div className="navbar-brand">
-          <h1>StarMap</h1>
-          <p>Interactive 3D Star Atlas</p>
+          <h1>StarData</h1>
+          <p>3D Star Atlas</p>
         </div>
 
         <div className="navbar-sep" />
 
-        {/* Search */}
-        {!showSearch && <NavSearch />}
+        {/* Search trigger */}
+        <button className="nav-btn" onClick={() => setShowSearch(true)} title="Search (/)">
+          ⌕ Search <kbd>/ </kbd>
+        </button>
 
         <div className="navbar-sep" />
 
@@ -214,7 +209,7 @@ export function NavBar() {
 
         <div className="navbar-sep" />
 
-        {/* Overlays */}
+        {/* View overlays */}
         <div className="navbar-section">
           <span className="navbar-label">View</span>
           <button className={`nav-btn ${showLabels ? 'on' : ''}`} onClick={() => setShowLabels(!showLabels)}>
@@ -240,32 +235,26 @@ export function NavBar() {
 
         <div className="navbar-sep" />
 
-        {/* Measure tool */}
-        <button
-          className={`nav-btn ${mode === 'measure' ? 'active' : ''}`}
-          onClick={() => setMode(mode === 'measure' ? 'explore' : 'measure')}
-        >
-          {mode === 'measure' ? '↩ Cancel Measure' : '⟷ Measure'}
-        </button>
+        {/* Tools */}
+        <div className="navbar-section">
+          <button
+            className={`nav-btn ${mode === 'measure' ? 'active' : ''}`}
+            onClick={() => setMode(mode === 'measure' ? 'explore' : 'measure')}
+          >
+            {mode === 'measure' ? '↩ Cancel' : '⟷ Measure'}
+          </button>
+          <button className="nav-btn" onClick={triggerCameraReset} title="Re-center on Sol">
+            ⊕ Center
+          </button>
+        </div>
 
         <div className="navbar-spacer" />
 
-        {/* Stats + Sources */}
         <span className="nav-stat">{stars.length.toLocaleString()} objects</span>
         <div className="navbar-sep" />
         <button className="nav-btn" onClick={() => setShowSources(true)}>Sources</button>
       </nav>
 
-      {/* Floating search overlay */}
-      {showSearch && (
-        <div style={{ position: 'absolute', top: 'calc(var(--navbar-h) + 0.5rem)', left: 0, right: 0, zIndex: 40, pointerEvents: 'none' }}>
-          <div style={{ pointerEvents: 'auto' }}>
-            <NavSearch />
-          </div>
-        </div>
-      )}
-
-      {/* Sources modal */}
       {showSources && (
         <SourcesModal onClose={() => setShowSources(false)} extraFiles={extraFiles} />
       )}

@@ -34,6 +34,12 @@ interface StoreState {
   setShowSearch: (v: boolean) => void;
   showSources: boolean;
   setShowSources: (v: boolean) => void;
+
+  // Camera controls
+  cameraResetTick: number;
+  triggerCameraReset: () => void;
+  zoomTarget: number;   // desired camera distance in pc
+  setZoomTarget: (v: number) => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -78,4 +84,9 @@ export const useStore = create<StoreState>((set) => ({
   setShowSearch: (v) => set({ showSearch: v }),
   showSources: false,
   setShowSources: (v) => set({ showSources: v }),
+
+  cameraResetTick: 0,
+  triggerCameraReset: () => set(s => ({ cameraResetTick: s.cameraResetTick + 1 })),
+  zoomTarget: 30,
+  setZoomTarget: (v) => set({ zoomTarget: v }),
 }));

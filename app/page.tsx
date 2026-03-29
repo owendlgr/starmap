@@ -1,7 +1,8 @@
 'use client';
 import dynamic from 'next/dynamic';
-import { NavBar } from '@/components/NavBar';
+import { NavBar, NavSearch } from '@/components/NavBar';
 import { SidePanel } from '@/components/SidePanel';
+import { ZoomSlider } from '@/components/ZoomSlider';
 import { useStore } from '@/lib/useStore';
 
 const StarMap = dynamic(() => import('@/components/StarMap').then(m => ({ default: m.StarMap })), {
@@ -25,6 +26,13 @@ export default function Home() {
       <NavBar />
       <div className="map-area">
         <StarMap />
+        {/* Search overlay — rendered inside map-area so z-index is correct */}
+        <div style={{ position: 'absolute', top: '0.6rem', left: 0, right: 0, zIndex: 40, pointerEvents: 'none' }}>
+          <div style={{ pointerEvents: 'auto' }}>
+            <NavSearch />
+          </div>
+        </div>
+        <ZoomSlider />
         <SidePanel />
         <LoadingDot />
         <div className="help-hint">
