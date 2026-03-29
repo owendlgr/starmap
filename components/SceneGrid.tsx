@@ -1,8 +1,7 @@
 'use client';
-// Subtle galactic plane reference grid + scale ring
+// Reference grid for the galactic plane — light background version
 export function SceneGrid() {
-  // Reference ring at 10 ly (3.066 pc) radius
-  const RING_R = 3.066;
+  const RING_R = 3.066; // ~10 ly reference ring
   const pts: number[] = [];
   const SEG = 64;
   for (let i = 0; i <= SEG; i++) {
@@ -13,14 +12,14 @@ export function SceneGrid() {
 
   return (
     <group>
-      {/* Galactic plane reference (very subtle) */}
-      <gridHelper args={[200, 40, '#0a0a1a', '#0a0a1a']} rotation={[0, 0, 0]} position={[0, 0, 0]} />
+      {/* Galactic plane reference grid — very subtle warm gray lines */}
+      <gridHelper args={[400, 60, '#c8c0b4', '#d8d0c4']} position={[0, 0, 0]} />
       {/* 10 ly reference ring */}
       <line>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[ringPts, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial color="#1a1a3a" transparent opacity={0.5} />
+        <lineBasicMaterial color="#b0a898" transparent opacity={0.6} />
       </line>
     </group>
   );

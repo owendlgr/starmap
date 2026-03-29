@@ -9,43 +9,40 @@ interface Props {
   color?: string;
 }
 
-export function SelectionMarker({ star, color = '#f5e6c8' }: Props) {
+export function SelectionMarker({ star, color = '#5a3e1e' }: Props) {
   const ref = useRef<THREE.Mesh>(null);
   const t = useRef(0);
 
   useFrame((_, delta) => {
     if (!ref.current) return;
     t.current += delta;
-    // Slowly pulse the ring
-    const s = 1 + 0.08 * Math.sin(t.current * 2.5);
+    const s = 1 + 0.06 * Math.sin(t.current * 2.5);
     ref.current.scale.setScalar(s);
   });
 
   return (
     <group position={[star.x, star.y, star.z]}>
-      {/* Selection ring */}
       <mesh ref={ref} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.6, 0.75, 32]} />
-        <meshBasicMaterial color={color} transparent opacity={0.8} side={THREE.DoubleSide} />
+        <ringGeometry args={[0.55, 0.7, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.75} side={THREE.DoubleSide} />
       </mesh>
-      {/* Cross hair lines */}
       <line>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            args={[new Float32Array([-1.2, 0, 0, -0.8, 0, 0, 0.8, 0, 0, 1.2, 0, 0]), 3]}
+            args={[new Float32Array([-1.1, 0, 0, -0.7, 0, 0, 0.7, 0, 0, 1.1, 0, 0]), 3]}
           />
         </bufferGeometry>
-        <lineBasicMaterial color={color} transparent opacity={0.5} />
+        <lineBasicMaterial color={color} transparent opacity={0.45} />
       </line>
       <line>
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            args={[new Float32Array([0, -1.2, 0, 0, -0.8, 0, 0, 0.8, 0, 0, 1.2, 0]), 3]}
+            args={[new Float32Array([0, -1.1, 0, 0, -0.7, 0, 0, 0.7, 0, 0, 1.1, 0]), 3]}
           />
         </bufferGeometry>
-        <lineBasicMaterial color={color} transparent opacity={0.5} />
+        <lineBasicMaterial color={color} transparent opacity={0.45} />
       </line>
     </group>
   );
@@ -63,7 +60,7 @@ export function MeasureLine({ from, to }: MeasureLineProps) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[pts, 3]} />
       </bufferGeometry>
-      <lineBasicMaterial color="#c8b88a" transparent opacity={0.6} linewidth={1} />
+      <lineBasicMaterial color="#5a3e1e" transparent opacity={0.55} linewidth={1} />
     </line>
   );
 }

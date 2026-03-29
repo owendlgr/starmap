@@ -82,3 +82,146 @@ export function formatTravelTime(years: number): string {
   if (years < 1e9) return `${(years / 1e6).toFixed(2)}M years`;
   return `${(years / 1e9).toFixed(2)}B years`;
 }
+
+// ── Derived stellar properties ────────────────────────────
+
+/** Ballesteros (2012) temperature estimate from B-V color index */
+export function estimateTemperature(bv: number): number {
+  if (!isFinite(bv) || bv < -0.4) bv = -0.3;
+  if (bv > 2.0) bv = 2.0;
+  return Math.round(4600 * (1 / (0.92 * bv + 1.7) + 1 / (0.92 * bv + 0.62)));
+}
+
+export function formatTemperature(k: number): string {
+  return k.toLocaleString() + ' K';
+}
+
+export function estimateMass(spectral: string): string {
+  const cls = (spectral || '').toUpperCase()[0];
+  switch (cls) {
+    case 'O': return '15 – 90+ M☉';
+    case 'B': return '2 – 15 M☉';
+    case 'A': return '1.4 – 2.1 M☉';
+    case 'F': return '1.04 – 1.4 M☉';
+    case 'G': return '0.8 – 1.04 M☉';
+    case 'K': return '0.45 – 0.8 M☉';
+    case 'M': return '0.08 – 0.45 M☉';
+    case 'L': case 'T': return '< 0.08 M☉ (brown dwarf)';
+    default: return '—';
+  }
+}
+
+export function estimateAge(spectral: string): string {
+  const cls = (spectral || '').toUpperCase()[0];
+  switch (cls) {
+    case 'O': return '~3 – 10 Myr';
+    case 'B': return '~30 Myr – 1 Gyr';
+    case 'A': return '~1 – 3 Gyr';
+    case 'F': return '~3 – 7 Gyr';
+    case 'G': return '~5 – 12 Gyr';
+    case 'K': return '~10 – 30 Gyr';
+    case 'M': return '~50 – 200+ Gyr';
+    default: return '—';
+  }
+}
+
+/** Absolute magnitude from apparent magnitude and distance in parsecs */
+export function absoluteMagnitude(mag: number, dist_pc: number): string {
+  if (dist_pc <= 0) return mag.toFixed(2);
+  const M = mag - 5 * Math.log10(dist_pc / 10);
+  return M.toFixed(2);
+}
+
+/** Parallax in milliarcseconds from distance in parsecs */
+export function parallaxFromDist(dist_pc: number): string {
+  if (dist_pc <= 0) return '0 mas';
+  return (1000 / dist_pc).toFixed(2) + ' mas';
+}
+
+// ── Constellation lookup ──────────────────────────────────
+
+const CONSTELLATION_CENTERS: { abbr: string; name: string; ra: number; dec: number }[] = [
+  { abbr: 'And', name: 'Andromeda',        ra: 17,  dec:  38 },
+  { abbr: 'Aql', name: 'Aquila',           ra: 297, dec:   3 },
+  { abbr: 'Aqr', name: 'Aquarius',         ra: 339, dec: -11 },
+  { abbr: 'Ari', name: 'Aries',            ra: 28,  dec:  20 },
+  { abbr: 'Aur', name: 'Auriga',           ra: 90,  dec:  42 },
+  { abbr: 'Boo', name: 'Boötes',           ra: 219, dec:  31 },
+  { abbr: 'CMa', name: 'Canis Major',      ra: 101, dec: -22 },
+  { abbr: 'CMi', name: 'Canis Minor',      ra: 115, dec:   6 },
+  { abbr: 'CVn', name: 'Canes Venatici',   ra: 194, dec:  40 },
+  { abbr: 'Cap', name: 'Capricornus',      ra: 320, dec: -18 },
+  { abbr: 'Car', name: 'Carina',           ra: 120, dec: -60 },
+  { abbr: 'Cas', name: 'Cassiopeia',       ra: 12,  dec:  62 },
+  { abbr: 'Cen', name: 'Centaurus',        ra: 183, dec: -48 },
+  { abbr: 'Cep', name: 'Cepheus',          ra: 323, dec:  70 },
+  { abbr: 'Cet', name: 'Cetus',            ra: 26,  dec:  -7 },
+  { abbr: 'CrA', name: 'Corona Australis', ra: 283, dec: -41 },
+  { abbr: 'CrB', name: 'Corona Borealis',  ra: 233, dec:  32 },
+  { abbr: 'Crv', name: 'Corvus',           ra: 187, dec: -18 },
+  { abbr: 'Cru', name: 'Crux',             ra: 187, dec: -60 },
+  { abbr: 'Cyg', name: 'Cygnus',           ra: 309, dec:  42 },
+  { abbr: 'Del', name: 'Delphinus',        ra: 309, dec:  12 },
+  { abbr: 'Dra', name: 'Draco',            ra: 240, dec:  65 },
+  { abbr: 'Eri', name: 'Eridanus',         ra: 51,  dec: -20 },
+  { abbr: 'Gem', name: 'Gemini',           ra: 113, dec:  22 },
+  { abbr: 'Gru', name: 'Grus',             ra: 340, dec: -47 },
+  { abbr: 'Her', name: 'Hercules',         ra: 258, dec:  27 },
+  { abbr: 'Hya', name: 'Hydra',            ra: 156, dec: -14 },
+  { abbr: 'Lac', name: 'Lacerta',          ra: 337, dec:  46 },
+  { abbr: 'Leo', name: 'Leo',              ra: 165, dec:  13 },
+  { abbr: 'Lep', name: 'Lepus',            ra: 84,  dec: -19 },
+  { abbr: 'Lib', name: 'Libra',            ra: 229, dec: -15 },
+  { abbr: 'Lup', name: 'Lupus',            ra: 232, dec: -43 },
+  { abbr: 'Lyr', name: 'Lyra',             ra: 285, dec:  36 },
+  { abbr: 'Mon', name: 'Monoceros',        ra: 109, dec:   0 },
+  { abbr: 'Oph', name: 'Ophiuchus',        ra: 258, dec:  -4 },
+  { abbr: 'Ori', name: 'Orion',            ra: 83,  dec:   5 },
+  { abbr: 'Pav', name: 'Pavo',             ra: 287, dec: -65 },
+  { abbr: 'Peg', name: 'Pegasus',          ra: 341, dec:  19 },
+  { abbr: 'Per', name: 'Perseus',          ra: 50,  dec:  45 },
+  { abbr: 'Phe', name: 'Phoenix',          ra: 16,  dec: -49 },
+  { abbr: 'PsA', name: 'Piscis Austrinus', ra: 338, dec: -30 },
+  { abbr: 'Psc', name: 'Pisces',           ra: 8,   dec:  13 },
+  { abbr: 'Pup', name: 'Puppis',           ra: 113, dec: -31 },
+  { abbr: 'Sco', name: 'Scorpius',         ra: 255, dec: -27 },
+  { abbr: 'Sct', name: 'Scutum',           ra: 279, dec: -10 },
+  { abbr: 'Ser', name: 'Serpens',          ra: 245, dec:  10 },
+  { abbr: 'Sge', name: 'Sagitta',          ra: 298, dec:  19 },
+  { abbr: 'Sgr', name: 'Sagittarius',      ra: 283, dec: -28 },
+  { abbr: 'Tau', name: 'Taurus',           ra: 68,  dec:  16 },
+  { abbr: 'TrA', name: 'Triangulum Australe', ra: 249, dec: -65 },
+  { abbr: 'Tri', name: 'Triangulum',       ra: 32,  dec:  32 },
+  { abbr: 'UMa', name: 'Ursa Major',       ra: 162, dec:  50 },
+  { abbr: 'UMi', name: 'Ursa Minor',       ra: 230, dec:  77 },
+  { abbr: 'Vel', name: 'Vela',             ra: 136, dec: -47 },
+  { abbr: 'Vir', name: 'Virgo',            ra: 198, dec:  -4 },
+  { abbr: 'Vul', name: 'Vulpecula',        ra: 302, dec:  24 },
+];
+
+/** Approximate constellation from RA/Dec using nearest-center lookup */
+export function getConstellation(ra: number, dec: number): string {
+  const r1 = ra * Math.PI / 180;
+  const d1 = dec * Math.PI / 180;
+  let minD = Infinity, nearest = 'Unknown';
+  for (const c of CONSTELLATION_CENTERS) {
+    const r2 = c.ra * Math.PI / 180;
+    const d2 = c.dec * Math.PI / 180;
+    const dot = Math.sin(d1) * Math.sin(d2) + Math.cos(d1) * Math.cos(d2) * Math.cos(r1 - r2);
+    const d = Math.acos(Math.max(-1, Math.min(1, dot)));
+    if (d < minD) { minD = d; nearest = c.name; }
+  }
+  return nearest;
+}
+
+/** Get approximate color hex from B-V index for the swatch display */
+export function bvToColor(bv: number): string {
+  // Map B-V to approximate RGB: blue stars (bv<0) → white-blue; red stars (bv>1.5) → deep red
+  const t = Math.max(-0.4, Math.min(2.0, bv));
+  if (t < 0) return '#9bb0ff';       // blue-white
+  if (t < 0.3) return '#cad7ff';     // white-blue
+  if (t < 0.6) return '#fff4e8';     // white-yellow (solar)
+  if (t < 1.0) return '#ffd2a1';     // orange
+  if (t < 1.5) return '#ffb347';     // orange-red
+  return '#ff6a40';                  // deep red-orange
+}

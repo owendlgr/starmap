@@ -2,11 +2,20 @@
   "id": "session-1774806728928",
   "startedAt": "2026-03-29T17:52:08.928Z",
   "cwd": "/Users/isaacdellinger/Downloads/starmap",
-  "context": {},
+  "context": {
+    "lastMatchedPatterns": [
+      "mem-project_terra-completed-as-of-2026-03-28--se",
+      "mem-project_terra-completed-as-of-2026-03-28--se",
+      "mem-project_terra-completed-as-of-2026-03-28--se",
+      "mem-project_terra-completed-as-of-2026-03-28--se",
+      "mem-project_terra-completed-as-of-2026-03-28--se"
+    ]
+  },
   "metrics": {
-    "edits": 3,
+    "edits": 14,
     "commands": 0,
     "tasks": 0,
     "errors": 0
-  }
+  },
+  "updatedAt": "2026-03-29T18:06:43.409Z"
 }

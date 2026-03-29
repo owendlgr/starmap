@@ -5,43 +5,39 @@ import * as THREE from 'three';
 import type { Star } from '@/lib/types';
 import { useStore } from '@/lib/useStore';
 
-// Custom shaders for circular star points with variable size
+// Paper/ink mode: dark dots on light background
 const VERT = `
 attribute float aSize;
-attribute vec3 aColor;
 attribute float aId;
 
-varying vec3 vColor;
 varying float vAlpha;
 
 uniform float uPixelRatio;
-uniform float uCamDist;
 
 void main() {
-  vColor = aColor;
   vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-  float dist = -mvPos.z;
+  float dist = max(-mvPos.z, 0.1);
 
-  // Scale size with camera distance but clamp so far stars stay visible
   float basePx = aSize * uPixelRatio;
-  float scaled = basePx * clamp(200.0 / dist, 0.15, 3.0);
-  gl_PointSize = clamp(scaled, 0.4, 8.0);
+  float scaled = basePx * clamp(220.0 / dist, 0.2, 4.0);
+  gl_PointSize = clamp(scaled, 1.2, 14.0);
 
-  vAlpha = clamp(aSize / 6.0, 0.3, 1.0);
+  // Brighter (lower magnitude = higher aSize) stars are more opaque
+  vAlpha = clamp(aSize / 5.5, 0.35, 1.0);
   gl_Position = projectionMatrix * mvPos;
 }
 `;
 
 const FRAG = `
-varying vec3 vColor;
 varying float vAlpha;
 
 void main() {
   vec2 center = gl_PointCoord - 0.5;
   float r = length(center);
   if (r > 0.5) discard;
-  float alpha = vAlpha * (1.0 - smoothstep(0.25, 0.5, r));
-  gl_FragColor = vec4(vColor, alpha);
+  float alpha = vAlpha * (1.0 - smoothstep(0.28, 0.5, r));
+  // Dark ink color — no spectral color on the map itself (shown in panel)
+  gl_FragColor = vec4(0.10, 0.07, 0.03, alpha);
 }
 `;
 
@@ -51,11 +47,10 @@ interface Props {
 }
 
 export function StarField({ stars, onSelect }: Props) {
-  const { camera, raycaster, gl } = useThree();
+  const { gl } = useThree();
   const { mode, setMeasureTarget, showStars, showGalaxies, showNebulae, showClusters } = useStore();
   const pointsRef = useRef<THREE.Points>(null);
 
-  // Filter by visible layers
   const filtered = useMemo(() => stars.filter(s => {
     const t = s.type?.toLowerCase() || '';
     if (t.includes('galaxy')) return showGalaxies;
@@ -67,22 +62,17 @@ export function StarField({ stars, onSelect }: Props) {
   const [geometry, idMap] = useMemo(() => {
     const geo = new THREE.BufferGeometry();
     const n = filtered.length;
-
-    const pos    = new Float32Array(n * 3);
-    const colors = new Float32Array(n * 3);
-    const sizes  = new Float32Array(n);
-
-    const map = new Map<number, Star>();
+    const pos   = new Float32Array(n * 3);
+    const sizes = new Float32Array(n);
+    const map   = new Map<number, Star>();
 
     filtered.forEach((s, i) => {
-      pos[i*3]   = s.x; pos[i*3+1] = s.y; pos[i*3+2] = s.z;
-      colors[i*3]   = s.color[0]; colors[i*3+1] = s.color[1]; colors[i*3+2] = s.color[2];
+      pos[i*3] = s.x; pos[i*3+1] = s.y; pos[i*3+2] = s.z;
       sizes[i] = s.size;
       map.set(i, s);
     });
 
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aColor',   new THREE.BufferAttribute(colors, 3));
     geo.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
     geo.computeBoundingSphere();
     return [geo, map];
@@ -93,11 +83,10 @@ export function StarField({ stars, onSelect }: Props) {
     fragmentShader: FRAG,
     uniforms: {
       uPixelRatio: { value: gl.getPixelRatio() },
-      uCamDist:    { value: 100 },
     },
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
   }), [gl]);
 
   const handleClick = useCallback((e: THREE.Event) => {
