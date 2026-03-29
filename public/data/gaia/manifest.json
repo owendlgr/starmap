@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "catalog": "Gaia DR3",
+  "filter": "parallax>0.5, parallax_over_error>5, G<11",
+  "chunks": [
+    "chunk_000.bin",
+    "chunk_001.bin",
+    "chunk_002.bin",
+    "chunk_003.bin",
+    "chunk_004.bin",
+    "chunk_005.bin"
+  ],
+  "total": 1134432,
+  "id_base": 4000000,
+  "star_size_bytes": 32
+}

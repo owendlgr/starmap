@@ -23,6 +23,15 @@
   --font-mono:    'Courier New', Courier, monospace;
 }
 
+/* ── Dark mode overrides ──────────────────────────────────── */
+[data-theme="dark"] {
+  --bg:          #0a0806;
+  --ink:         #e8e0d0;
+  --ink-mid:     #c8b898;
+  --muted:       #7a6e5e;
+  --divider-map: rgba(232, 224, 208, 0.08);
+}
+
 html, body {
   width: 100%; height: 100%; overflow: hidden;
   background: var(--bg);

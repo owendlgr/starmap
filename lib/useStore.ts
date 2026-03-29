@@ -41,8 +41,22 @@ interface StoreState {
   // Camera controls
   cameraResetTick: number;
   triggerCameraReset: () => void;
-  zoomTarget: number;   // desired camera distance in pc
-  setZoomTarget: (v: number) => void;
+  zoomTarget: number;          // desired camera distance in pc
+  _zoomLerpTick: number;       // incremented by setZoomTarget to trigger lerp
+  setZoomTarget: (v: number) => void;  // slider/reset → triggers lerp
+  syncCameraZoom: (v: number) => void; // OrbitControls → syncs display only
+
+  // Theme
+  theme: 'light' | 'dark';
+  setTheme: (t: 'light' | 'dark') => void;
+
+  // About modal
+  showAbout: boolean;
+  setShowAbout: (v: boolean) => void;
+
+  // Map mode: 3D orbit or 2D bird's-eye top-down
+  mapMode: '3d' | '2d';
+  setMapMode: (m: '3d' | '2d') => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -94,5 +108,16 @@ export const useStore = create<StoreState>((set) => ({
   cameraResetTick: 0,
   triggerCameraReset: () => set(s => ({ cameraResetTick: s.cameraResetTick + 1 })),
   zoomTarget: 30,
-  setZoomTarget: (v) => set({ zoomTarget: v }),
+  _zoomLerpTick: 0,
+  setZoomTarget: (v) => set(s => ({ zoomTarget: v, _zoomLerpTick: s._zoomLerpTick + 1 })),
+  syncCameraZoom: (v) => set({ zoomTarget: v }),
+
+  theme: 'light',
+  setTheme: (t) => set({ theme: t }),
+
+  showAbout: false,
+  setShowAbout: (v) => set({ showAbout: v }),
+
+  mapMode: '3d',
+  setMapMode: (m) => set({ mapMode: m }),
 }));

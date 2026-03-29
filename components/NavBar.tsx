@@ -54,6 +54,64 @@ function SourcesModal({ onClose, extraFiles }: { onClose: () => void; extraFiles
   );
 }
 
+// ── About modal ───────────────────────────────────────────
+function AboutModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-box">
+        <button className="modal-close" onClick={onClose}>✕</button>
+        <div className="modal-title">StarData</div>
+        <div className="modal-subtitle">Interactive 3D Star Atlas</div>
+
+        <div style={{ marginBottom: '1.25rem', lineHeight: 1.7, fontSize: '0.88rem', color: 'var(--chrome-text)' }}>
+          StarData is an interactive three-dimensional atlas of our stellar neighborhood,
+          built from real astronomical measurements. Every star you see has a precisely
+          measured position derived from satellite parallax observations.
+        </div>
+
+        <div className="source-entry">
+          <div className="source-name">Created by</div>
+          <div className="source-meta" style={{ marginTop: '0.3rem', fontSize: '0.92rem', color: 'var(--chrome-text)' }}>
+            Isaac Dellinger
+          </div>
+        </div>
+
+        <div className="source-entry">
+          <div className="source-name">Technology</div>
+          <div className="source-meta" style={{ marginTop: '0.25rem' }}>
+            Built with Next.js 14, React Three Fiber, Three.js, and Zustand.<br />
+            3D rendering uses custom GLSL shaders with a logarithmic depth buffer
+            supporting scales from sub-parsec to 60,000 pc.
+          </div>
+        </div>
+
+        <div className="source-entry">
+          <div className="source-name">Data</div>
+          <div className="source-meta" style={{ marginTop: '0.25rem' }}>
+            Star positions from the ESA Hipparcos catalogue (1997).<br />
+            Exoplanet host systems from the NASA Exoplanet Archive (2026).<br />
+            Coordinate system: equatorial Cartesian, 1 unit = 1 parsec.
+          </div>
+        </div>
+
+        <div className="source-entry">
+          <div className="source-name">Navigation</div>
+          <div className="source-meta" style={{ marginTop: '0.25rem' }}>
+            Drag to rotate · Scroll or pinch to zoom · Click any object to inspect<br />
+            Press <kbd>/</kbd> to search · Use the <strong style={{ color: 'var(--chrome-accent)' }}>2D</strong> button for a top-down galactic plane view
+          </div>
+        </div>
+
+        <div style={{ marginTop: '1.5rem', fontSize: '0.68rem', color: 'var(--chrome-muted)', fontFamily: 'var(--font-mono)', fontStyle: 'italic', fontWeight: 'bold', lineHeight: 1.6 }}>
+          All stellar distances are based on trigonometric parallax measurements.
+          Physical properties (mass, temperature, age) are statistical estimates
+          derived from spectral classification, not direct measurements.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Inline search (rendered inside map-area) ──────────────
 export function NavSearch() {
   const { stars, setSelected, showSearch, setShowSearch } = useStore();
@@ -146,12 +204,20 @@ export function NavBar() {
     showDepthLines, setShowDepthLines,
     showSearch, setShowSearch,
     showSources, setShowSources,
+    showAbout, setShowAbout,
     stars,
     triggerCameraReset,
     exoHostCount,
+    theme, setTheme,
+    mapMode, setMapMode,
   } = useStore();
 
   const [extraFiles, setExtraFiles] = useState<string[]>([]);
+
+  // Apply data-theme to document so CSS vars switch
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!showSources) return;
@@ -171,7 +237,7 @@ export function NavBar() {
 
         <div className="navbar-sep" />
 
-        {/* Search trigger */}
+        {/* Search */}
         <button className="nav-btn" onClick={() => setShowSearch(true)} title="Search (/)">
           ⌕ Search <kbd>/ </kbd>
         </button>
@@ -195,20 +261,28 @@ export function NavBar() {
 
         <div className="navbar-sep" />
 
-        {/* View overlays */}
+        {/* View */}
         <div className="navbar-section">
           <span className="navbar-label">View</span>
           <button className={`nav-btn ${showLabels ? 'on' : ''}`} onClick={() => setShowLabels(!showLabels)}>
             Labels
           </button>
           <button className={`nav-btn ${showDepthLines ? 'on' : ''}`} onClick={() => setShowDepthLines(!showDepthLines)}>
-            Depth Lines
+            Depth
+          </button>
+          {/* 2D / 3D toggle */}
+          <button
+            className={`nav-btn ${mapMode === '2d' ? 'active' : ''}`}
+            onClick={() => setMapMode(mapMode === '3d' ? '2d' : '3d')}
+            title="Toggle 2D bird's-eye / 3D orbit view"
+          >
+            {mapMode === '2d' ? '3D' : '2D'}
           </button>
         </div>
 
         <div className="navbar-sep" />
 
-        {/* Distance unit */}
+        {/* Unit */}
         <div className="navbar-section">
           <span className="navbar-label">Unit</span>
           {SCALE_OPTIONS.map(o => (
@@ -239,25 +313,44 @@ export function NavBar() {
         {/* Legend */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginRight: '0.5rem' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--chrome-muted)', fontWeight: 'bold' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1a1208', display: 'inline-block', flexShrink: 0 }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--chrome-muted)', display: 'inline-block', flexShrink: 0 }} />
             Star
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--chrome-muted)', fontWeight: 'bold' }}>
-            <span style={{ width: 9, height: 9, borderRadius: '50%', border: '1.5px solid #1a1208', display: 'inline-block', flexShrink: 0 }} />
-            Exoplanet Host
+            <span style={{ width: 9, height: 9, borderRadius: '50%', border: '1.5px solid var(--chrome-muted)', display: 'inline-block', flexShrink: 0 }} />
+            Exo Host
           </span>
         </div>
+
         <div className="navbar-sep" />
+
         <span className="nav-stat">
           {stars.length.toLocaleString()} stars
-          {exoHostCount > 0 && ` · ${exoHostCount.toLocaleString()} exo hosts`}
+          {exoHostCount > 0 && ` · ${exoHostCount.toLocaleString()} exo`}
         </span>
+
         <div className="navbar-sep" />
+
+        {/* Theme toggle */}
+        <button
+          className="nav-btn"
+          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
+          {theme === 'light' ? '◑ Dark' : '◐ Light'}
+        </button>
+
+        <div className="navbar-sep" />
+
+        <button className="nav-btn" onClick={() => setShowAbout(true)}>About</button>
         <button className="nav-btn" onClick={() => setShowSources(true)}>Sources</button>
       </nav>
 
       {showSources && (
         <SourcesModal onClose={() => setShowSources(false)} extraFiles={extraFiles} />
+      )}
+      {showAbout && (
+        <AboutModal onClose={() => setShowAbout(false)} />
       )}
     </>
   );

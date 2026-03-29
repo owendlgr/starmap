@@ -2,7 +2,7 @@
 import { useStore } from '@/lib/useStore';
 
 // Log scale: slider 0→100 maps to distance 0.05→5000 pc
-const MIN_D = 0.05;
+const MIN_D = 0.2;
 const MAX_D = 5000;
 const LOG_MIN = Math.log10(MIN_D);
 const LOG_MAX = Math.log10(MAX_D);

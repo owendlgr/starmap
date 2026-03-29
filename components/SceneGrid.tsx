@@ -1,25 +1,28 @@
 'use client';
-// Reference grid for the galactic plane — light background version
+import { useStore } from '@/lib/useStore';
+
 export function SceneGrid() {
-  const RING_R = 3.066; // ~10 ly reference ring
+  const { theme } = useStore();
+  const dark = theme === 'dark';
+  const RING_R = 3.066;
   const pts: number[] = [];
-  const SEG = 64;
-  for (let i = 0; i <= SEG; i++) {
-    const a = (i / SEG) * Math.PI * 2;
+  for (let i = 0; i <= 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
     pts.push(Math.cos(a) * RING_R, 0, Math.sin(a) * RING_R);
   }
   const ringPts = new Float32Array(pts);
+  const gridA = dark ? '#1c1614' : '#c8c0b4';
+  const gridB = dark ? '#222018' : '#d8d0c4';
+  const ringCol = dark ? '#302820' : '#b0a898';
 
   return (
     <group>
-      {/* Galactic plane reference grid — very subtle warm gray lines */}
-      <gridHelper args={[400, 60, '#c8c0b4', '#d8d0c4']} position={[0, 0, 0]} />
-      {/* 10 ly reference ring */}
+      <gridHelper args={[400, 60, gridA, gridB]} position={[0,0,0]} />
       <line>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[ringPts, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial color="#b0a898" transparent opacity={0.6} />
+        <lineBasicMaterial color={ringCol} transparent opacity={dark ? 0.5 : 0.6} />
       </line>
     </group>
   );
