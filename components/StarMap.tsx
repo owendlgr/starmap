@@ -14,6 +14,9 @@ import type { Star, StarChunk } from '@/lib/types';
 
 const isNamed = (s: Star) => s.name && !s.name.startsWith('HIP ');
 
+// Projected position entry shared between TwoDDotsCanvas (writer) and TwoDHoverOverlay (reader)
+type ProjEntry = { sx: number; sy: number; star: Star };
+
 // ── Data loaders ──────────────────────────────────────────
 function DataLoader() {
   const { addStars } = useStore();
@@ -26,13 +29,14 @@ function DataLoader() {
   return null;
 }
 
-
 function ExoplanetLoader({ onLoad }: { onLoad: (stars: Star[]) => void }) {
   const { setExoHostCount } = useStore();
   useEffect(() => {
     fetch('/api/exoplanet-stars')
       .then(r => r.json())
-      .then((d: { stars: Star[] }) => { if (d.stars?.length) { onLoad(d.stars); setExoHostCount(d.stars.length); } })
+      .then((d: { stars: Star[] }) => {
+        if (d.stars?.length) { onLoad(d.stars); setExoHostCount(d.stars.length); }
+      })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -59,14 +63,13 @@ function CameraManager() {
     setZoomTarget(28);
   }, [cameraResetTick, camera, setZoomTarget]);
 
-  // Slider or reset → start lerp
   useEffect(() => {
     if (_zoomLerpTick === prevLerpTick.current) return;
     prevLerpTick.current = _zoomLerpTick;
     lerpActive.current = true;
   }, [_zoomLerpTick]);
 
-  // 2D: snap to bird's-eye, disable rotation
+  // 2D: snap to bird's-eye
   useEffect(() => {
     if (mapMode === '2d') {
       const dist = camera.position.length();
@@ -85,15 +88,37 @@ function CameraManager() {
     controlsRef.current?.update();
   });
 
+  // In 2D mode: remap left-click from rotate → pan so the user can drag around
+  const mouseButtons2d = useMemo(() => ({
+    LEFT:   THREE.MOUSE.PAN,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT:  THREE.MOUSE.PAN,
+  }), []);
+  const mouseButtons3d = useMemo(() => ({
+    LEFT:   THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT:  THREE.MOUSE.PAN,
+  }), []);
+  const touches2d = useMemo(() => ({
+    ONE: THREE.TOUCH.PAN,
+    TWO: THREE.TOUCH.DOLLY_PAN,
+  }), []);
+  const touches3d = useMemo(() => ({
+    ONE: THREE.TOUCH.ROTATE,
+    TWO: THREE.TOUCH.DOLLY_PAN,
+  }), []);
+
   return (
     <OrbitControls
       // @ts-expect-error ref typing
       ref={controlsRef}
       enableDamping dampingFactor={0.10}
-      rotateSpeed={mapMode === '2d' ? 0 : 0.45}
+      rotateSpeed={0.45}
       zoomSpeed={1.0} panSpeed={0.6}
       minDistance={0.2} maxDistance={60000}
       makeDefault
+      mouseButtons={mapMode === '2d' ? mouseButtons2d : mouseButtons3d}
+      touches={mapMode === '2d' ? touches2d : touches3d}
       onChange={() => {
         if (lerpActive.current) return;
         const now = Date.now();
@@ -173,11 +198,24 @@ function DepthLines({ stars }: { stars: Star[] }) {
   }, [stars]);
   if (!showDepthLines) return null;
   const col = theme === 'dark' ? '#504840' : '#b0a898';
-  return <lineSegments geometry={geometry}><lineBasicMaterial color={col} transparent opacity={0.35} /></lineSegments>;
+  return (
+    <lineSegments geometry={geometry}>
+      <lineBasicMaterial color={col} transparent opacity={0.35} />
+    </lineSegments>
+  );
 }
 
-// ── 2D: canvas dot overlay inside Three.js ────────────────
-function TwoDDotsCanvas({ allStars, exoHosts }: { allStars: Star[]; exoHosts: Star[] }) {
+// ── 2D canvas dot renderer ────────────────────────────────
+// Draws all stars as 2D dots and populates projRef each frame so the
+// DOM overlay can do accurate hit detection without any math approximation.
+function TwoDDotsCanvas({
+  allStars, exoHosts,
+  projRef,
+}: {
+  allStars: Star[];
+  exoHosts: Star[];
+  projRef: React.MutableRefObject<ProjEntry[]>;
+}) {
   const { camera, size } = useThree();
   const { theme } = useStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -191,15 +229,18 @@ function TwoDDotsCanvas({ allStars, exoHosts }: { allStars: Star[]; exoHosts: St
     const dark = theme === 'dark';
     ctx.clearRect(0, 0, c.width, c.height);
 
+    const entries: ProjEntry[] = [];
+
     const draw = (stars: Star[], ring: boolean) => {
       for (const s of stars) {
         proj.set(s.x, s.y, s.z).project(camera);
         const sx = (proj.x * 0.5 + 0.5) * size.width;
         const sy = (1 - (proj.y * 0.5 + 0.5)) * size.height;
-        if (sx < -20 || sx > size.width+20 || sy < -20 || sy > size.height+20) continue;
+        if (sx < -20 || sx > size.width + 20 || sy < -20 || sy > size.height + 20) continue;
+        entries.push({ sx, sy, star: s });
         const r = Math.max(1.5, Math.min(5, 4.0 - s.mag * 0.25));
         ctx.beginPath();
-        ctx.arc(sx, sy, r + (ring ? 1.5 : 0), 0, Math.PI*2);
+        ctx.arc(sx, sy, r + (ring ? 1.5 : 0), 0, Math.PI * 2);
         if (ring) {
           ctx.strokeStyle = dark ? 'rgba(232,220,200,0.7)' : 'rgba(26,18,8,0.65)';
           ctx.lineWidth = 1.2;
@@ -212,17 +253,22 @@ function TwoDDotsCanvas({ allStars, exoHosts }: { allStars: Star[]; exoHosts: St
     };
     draw(allStars, false);
     draw(exoHosts, true);
+
     // Sol
-    proj.set(0,0,0).project(camera);
-    const sx = (proj.x*0.5+0.5)*size.width, sy = (1-(proj.y*0.5+0.5))*size.height;
-    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI*2);
+    proj.set(0, 0, 0).project(camera);
+    const sx = (proj.x * 0.5 + 0.5) * size.width;
+    const sy = (1 - (proj.y * 0.5 + 0.5)) * size.height;
+    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2);
     ctx.fillStyle = dark ? '#c8b898' : '#3d2e1e'; ctx.fill();
+
+    // Update shared ref — DOM overlay reads this on next mousemove
+    projRef.current = entries;
   });
 
   return (
-    <Html fullscreen style={{ zIndex:7, pointerEvents:'none' }} zIndexRange={[9,0]}>
+    <Html fullscreen style={{ zIndex: 7, pointerEvents: 'none' }} zIndexRange={[9, 0]}>
       <canvas ref={canvasRef} width={size.width} height={size.height}
-        style={{ position:'absolute', inset:0, pointerEvents:'none' }} />
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
     </Html>
   );
 }
@@ -250,99 +296,111 @@ function Scene({ exoHosts }: { exoHosts: Star[] }) {
   );
 }
 
-// ── 2D scene (top-down) ───────────────────────────────────
-function Scene2D({ exoHosts }: { exoHosts: Star[] }) {
+// ── 2D scene ──────────────────────────────────────────────
+function Scene2D({
+  exoHosts,
+  projRef,
+}: {
+  exoHosts: Star[];
+  projRef: React.MutableRefObject<ProjEntry[]>;
+}) {
   const { stars, theme } = useStore();
   const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
   return (
     <>
       <color attach="background" args={[bg]} />
       <CameraManager />
-      <TwoDDotsCanvas allStars={stars} exoHosts={exoHosts} />
+      <TwoDDotsCanvas allStars={stars} exoHosts={exoHosts} projRef={projRef} />
     </>
   );
 }
 
-// ── 2D hover tooltip (DOM layer, outside Canvas) ──────────
-// Uses accurate perspective projection for the top-down camera.
-function TwoDHoverOverlay({ allStars, exoHosts }: { allStars: Star[]; exoHosts: Star[] }) {
-  const { theme, zoomTarget, setSelected, mode, setMeasureTarget } = useStore();
+// ── 2D hover + click overlay (DOM, reads projRef) ─────────
+function TwoDHoverOverlay({
+  projRef,
+}: {
+  projRef: React.MutableRefObject<ProjEntry[]>;
+}) {
+  const { theme, setSelected, mode, setMeasureTarget } = useStore();
   const [hovered, setHovered] = useState<{ x: number; y: number; stars: Star[] } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const CLUSTER_PX = 12;
-  const FOV_RAD = 60 * (Math.PI / 180);
 
-  // Project world-space star (x, z) to screen coords for top-down camera
-  const project = useCallback((s: Star, W: number, H: number) => {
-    // Camera at (0, zoomTarget, 0), looking straight down
-    // Visible half-height = zoomTarget * tan(fov/2), half-width = halfH * aspect
-    const halfH = zoomTarget * Math.tan(FOV_RAD / 2);
-    const halfW = halfH * (W / H);
-    const sx = W / 2 + (s.x / halfW) * (W / 2);
-    const sy = H / 2 + (s.z / halfH) * (H / 2);
-    return { sx, sy };
-  }, [zoomTarget]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    const W = rect.width, H = rect.height;
-    const all = [...allStars, ...exoHosts];
-    const nearby = all.filter(s => {
-      const { sx, sy } = project(s, W, H);
-      return Math.hypot(sx - mx, sy - my) < CLUSTER_PX;
-    });
-    setHovered(nearby.length > 0 ? { x: mx, y: my, stars: nearby.slice(0, 20) } : null);
-  }, [allStars, exoHosts, project]);
-
-  const handleMouseLeave = useCallback(() => setHovered(null), []);
+  const nearby = useCallback((mx: number, my: number) =>
+    projRef.current
+      .filter(p => Math.hypot(p.sx - mx, p.sy - my) < CLUSTER_PX)
+      .map(p => p.star),
+  [projRef]);
 
   const handleSelect = useCallback((star: Star) => {
     if (mode === 'measure') setMeasureTarget(star); else setSelected(star);
     setHovered(null);
   }, [mode, setSelected, setMeasureTarget]);
 
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const hits = nearby(mx, my);
+    setHovered(hits.length > 0 ? { x: mx, y: my, stars: hits.slice(0, 20) } : null);
+  }, [nearby]);
+
+  const handleMouseLeave = useCallback(() => setHovered(null), []);
+
+  // Click: single star → select immediately; multiple → show tooltip
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const hits = nearby(e.clientX - rect.left, e.clientY - rect.top);
+    if (hits.length === 1) handleSelect(hits[0]);
+    // If multiple, the hover tooltip is already showing — user picks from list
+  }, [nearby, handleSelect]);
+
   const dark = theme === 'dark';
-  const panelBg = dark ? 'rgba(10,8,5,0.97)' : 'rgba(240,236,224,0.97)';
-  const border = dark ? 'rgba(200,180,140,0.3)' : 'rgba(26,18,8,0.2)';
-  const headerColor = dark ? '#9a8e7e' : '#7a6e5e';
-  const nameColor = dark ? '#e8e0d0' : '#1a1208';
-  const metaColor = dark ? '#9a8e7e' : '#7a6e5e';
-  const rowBorder = dark ? 'rgba(200,180,140,0.08)' : 'rgba(26,18,8,0.07)';
-  const rowHover = dark ? 'rgba(200,180,140,0.08)' : 'rgba(26,18,8,0.06)';
+  const panelBg  = dark ? 'rgba(10,8,5,0.97)'    : 'rgba(240,236,224,0.97)';
+  const border   = dark ? 'rgba(200,180,140,0.3)' : 'rgba(26,18,8,0.2)';
+  const hdrColor = dark ? '#9a8e7e'               : '#7a6e5e';
+  const namColor = dark ? '#e8e0d0'               : '#1a1208';
+  const metColor = dark ? '#9a8e7e'               : '#7a6e5e';
+  const rowBdr   = dark ? 'rgba(200,180,140,0.08)': 'rgba(26,18,8,0.07)';
+  const rowHov   = dark ? 'rgba(200,180,140,0.08)': 'rgba(26,18,8,0.06)';
 
   return (
-    <div ref={containerRef} style={{ position:'absolute', inset:0, pointerEvents:'auto', zIndex:8 }}
-      onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+    <div ref={containerRef}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', zIndex: 8, cursor: 'crosshair' }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+    >
       {hovered && hovered.stars.length > 0 && (
         <div style={{
-          position:'absolute',
+          position: 'absolute',
           left: Math.min(hovered.x + 14, (containerRef.current?.clientWidth ?? 800) - 300),
           top: Math.max(hovered.y - 8, 4),
-          background: panelBg, border:`1px solid ${border}`,
-          borderRadius:3, padding:'0.4rem 0', zIndex:35,
-          minWidth:180, maxWidth:280, maxHeight:260, overflowY:'auto',
-          boxShadow:'0 4px 16px rgba(0,0,0,0.25)', pointerEvents:'auto',
+          background: panelBg, border: `1px solid ${border}`,
+          borderRadius: 3, padding: '0.4rem 0', zIndex: 35,
+          minWidth: 180, maxWidth: 280, maxHeight: 260, overflowY: 'auto',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.25)', pointerEvents: 'auto',
         }}>
           {hovered.stars.length > 1 && (
-            <div style={{ fontSize:'0.6rem', fontFamily:'var(--font-mono)', fontWeight:'bold',
-              letterSpacing:'0.1em', textTransform:'uppercase', color:headerColor,
-              padding:'0 0.7rem 0.3rem', borderBottom:`1px solid ${rowBorder}`, marginBottom:'0.2rem' }}>
+            <div style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', fontWeight: 'bold',
+              letterSpacing: '0.1em', textTransform: 'uppercase', color: hdrColor,
+              padding: '0 0.7rem 0.3rem',
+              borderBottom: `1px solid ${rowBdr}`, marginBottom: '0.2rem' }}>
               {hovered.stars.length} objects at this location
             </div>
           )}
           {hovered.stars.map(s => (
-            <button key={s.id} onClick={() => handleSelect(s)}
-              style={{ display:'block', width:'100%', textAlign:'left', background:'none',
-                border:'none', padding:'0.4rem 0.7rem', cursor:'pointer',
-                borderBottom:`1px solid ${rowBorder}` }}
-              onMouseEnter={e => (e.currentTarget.style.background = rowHover)}
+            <button key={s.id} onClick={ev => { ev.stopPropagation(); handleSelect(s); }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none',
+                border: 'none', padding: '0.4rem 0.7rem', cursor: 'pointer',
+                borderBottom: `1px solid ${rowBdr}` }}
+              onMouseEnter={e => (e.currentTarget.style.background = rowHov)}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-              <div style={{ fontSize:'0.82rem', fontWeight:'bold', color:nameColor }}>{s.name}</div>
-              <div style={{ fontSize:'0.65rem', fontFamily:'var(--font-mono)', fontWeight:'bold',
-                color:metaColor, marginTop:'0.1rem' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: namColor }}>{s.name}</div>
+              <div style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', fontWeight: 'bold',
+                color: metColor, marginTop: '0.1rem' }}>
                 {s.type} · {s.dist_pc > 0 ? `${s.dist_pc.toFixed(1)} pc` : 'here'}
               </div>
             </button>
@@ -356,28 +414,30 @@ function TwoDHoverOverlay({ allStars, exoHosts }: { allStars: Star[]; exoHosts: 
 // ── Root export ───────────────────────────────────────────
 export function StarMap() {
   const [exoHosts, setExoHosts] = useState<Star[]>([]);
-  const { stars, theme, mapMode } = useStore();
+  const { theme, mapMode } = useStore();
   const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
 
+  // Shared ref: TwoDDotsCanvas writes projected positions, TwoDHoverOverlay reads them.
+  // This gives the DOM overlay pixel-accurate hit detection that tracks pan and zoom.
+  const projRef = useRef<ProjEntry[]>([]);
+
   return (
-    <div style={{ width:'100%', height:'100%', position:'absolute', inset:0 }}>
+    <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
       <DataLoader />
       <ExoplanetLoader onLoad={setExoHosts} />
       <Canvas
-        camera={{ fov:60, near:0.001, far:200000 }}
-        gl={{ antialias:true, alpha:false, powerPreference:'high-performance', logarithmicDepthBuffer:true }}
-        dpr={[1,2]} style={{ background:bg }}
+        camera={{ fov: 60, near: 0.001, far: 200000 }}
+        gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}
+        dpr={[1, 2]} style={{ background: bg }}
       >
         <Suspense fallback={null}>
           {mapMode === '3d'
             ? <Scene exoHosts={exoHosts} />
-            : <Scene2D exoHosts={exoHosts} />
+            : <Scene2D exoHosts={exoHosts} projRef={projRef} />
           }
         </Suspense>
       </Canvas>
-      {mapMode === '2d' && (
-        <TwoDHoverOverlay allStars={stars} exoHosts={exoHosts} />
-      )}
+      {mapMode === '2d' && <TwoDHoverOverlay projRef={projRef} />}
     </div>
   );
 }
