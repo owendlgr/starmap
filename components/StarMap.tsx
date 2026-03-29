@@ -5,6 +5,7 @@ import { OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { StarField } from './StarField';
 import { ExoplanetHostField } from './ExoplanetHostField';
+import { GaiaField } from './GaiaField';
 import { SelectionMarker, MeasureLine } from './SelectionMarker';
 import { SceneGrid } from './SceneGrid';
 import { useStore } from '@/lib/useStore';
@@ -25,46 +26,6 @@ function DataLoader() {
   return null;
 }
 
-function parseGaiaChunk(buf: ArrayBuffer, idBase: number): Star[] {
-  if (buf.byteLength < 8) return [];
-  const dv = new DataView(buf);
-  const magic = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
-  if (magic !== 'GAIA') return [];
-  const count = dv.getUint32(4, true);
-  if (buf.byteLength < 8 + count * 32) return [];
-  const stars: Star[] = [];
-  for (let i = 0; i < count; i++) {
-    const b = 8 + i * 32;
-    const x = dv.getFloat32(b, true), y = dv.getFloat32(b+4, true), z = dv.getFloat32(b+8, true);
-    const mag = dv.getFloat32(b+12, true), bvrp = dv.getFloat32(b+16, true);
-    const dist_pc = dv.getFloat32(b+20, true), ra = dv.getFloat32(b+24, true), dec = dv.getFloat32(b+28, true);
-    stars.push({ id: idBase+i, name: `Gaia DR3 ${idBase+i}`, x, y, z, mag, bv: bvrp*0.85,
-      spectral: '', type: 'Star', ra, dec, dist_pc, size: Math.max(0.3, 4.0-mag*0.3),
-      color: [0.10,0.07,0.03], catalog: 'Gaia DR3', hip: 0 });
-  }
-  return stars;
-}
-
-function GaiaLoader() {
-  const { addStars } = useStore();
-  useEffect(() => {
-    fetch('/data/gaia/manifest.json')
-      .then(r => { if (!r.ok) throw new Error('no manifest'); return r.json(); })
-      .then(async (m: { chunks: string[]; id_base: number }) => {
-        const base = m.id_base ?? 4_000_000;
-        let offset = 0;
-        for (const chunk of m.chunks) {
-          const res = await fetch(`/data/gaia/${chunk}`);
-          if (!res.ok) continue;
-          const stars = parseGaiaChunk(await res.arrayBuffer(), base + offset);
-          if (stars.length) { addStars(`gaia-${chunk}`, stars); offset += stars.length; }
-        }
-      })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return null;
-}
 
 function ExoplanetLoader({ onLoad }: { onLoad: (stars: Star[]) => void }) {
   const { setExoHostCount } = useStore();
@@ -279,6 +240,7 @@ function Scene({ exoHosts }: { exoHosts: Star[] }) {
       <SolarMarker />
       <StarField stars={stars} onSelect={setSelected} />
       {exoHosts.length > 0 && <ExoplanetHostField stars={exoHosts} />}
+      <GaiaField />
       <StarLabels stars={stars} />
       <DepthLines stars={stars} />
       {selectedStar && <SelectionMarker star={selectedStar} color="#5a3e1e" />}
@@ -400,7 +362,6 @@ export function StarMap() {
   return (
     <div style={{ width:'100%', height:'100%', position:'absolute', inset:0 }}>
       <DataLoader />
-      <GaiaLoader />
       <ExoplanetLoader onLoad={setExoHosts} />
       <Canvas
         camera={{ fov:60, near:0.001, far:200000 }}
