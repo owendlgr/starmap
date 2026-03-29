@@ -16,19 +16,10 @@ const isNamed = (s: Star) => s.name && !s.name.startsWith('HIP ');
 function DataLoader() {
   const { addStars } = useStore();
   useEffect(() => {
-    const load = async (chunk: string, delay = 0) => {
-      if (delay) await new Promise(r => setTimeout(r, delay));
-      try {
-        const res = await fetch(`/data/stars_${chunk}.json`);
-        if (!res.ok) return;
-        const data: StarChunk = await res.json();
-        addStars(chunk, data.stars);
-      } catch { /* silent */ }
-    };
-    load('bright', 0);
-    load('medium', 400);
-    load('faint', 1200);
-    load('deep', 3000);
+    fetch('/data/stars_verified.json')
+      .then(r => r.json())
+      .then((d: StarChunk) => addStars('verified', d.stars))
+      .catch(() => {/* silent */});
   }, [addStars]);
   return null;
 }

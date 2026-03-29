@@ -6,29 +6,14 @@ import type { ScaleUnit } from '@/lib/types';
 // ── Sources modal ─────────────────────────────────────────
 const KNOWN_SOURCES = [
   {
-    name: 'NASA Exoplanet Archive (2026)',
-    detail: '~5,600 confirmed exoplanet systems, 39,000+ records. Includes orbital parameters, planetary radius, mass, discovery method, equilibrium temperature, and host star data.',
-    url: 'https://exoplanetarchive.ipac.caltech.edu',
-  },
-  {
     name: 'Hipparcos Catalogue (ESA, 1997)',
-    detail: '~100 named stars with measured parallax, proper motion, BV photometry, and spectral classification. All positions are real Hipparcos measurements.',
+    detail: '76 named stars with measured astrometry: parallax, proper motion, BV photometry, and spectral classification. All positions are real satellite measurements with sub-milliarcsecond precision.',
     url: 'https://www.cosmos.esa.int/web/hipparcos',
   },
   {
-    name: 'Yale Bright Star Catalogue',
-    detail: 'Standard reference for stars visible to the naked eye (apparent magnitude < 6.5).',
-    url: 'http://tdc-www.harvard.edu/catalogs/bsc5.html',
-  },
-  {
-    name: 'NGC/IC Catalogue',
-    detail: 'New General Catalogue — deep sky objects: galaxies, nebulae, and star clusters.',
-    url: 'https://www.ngcicproject.org',
-  },
-  {
-    name: 'Generated Background Catalog',
-    detail: 'Statistically realistic background stars (~15,000 objects) following galactic disk density distribution. Not from a real survey — generated for visual completeness. Should not be used for scientific analysis.',
-    url: null,
+    name: 'NASA Exoplanet Archive (2026)',
+    detail: '5,600+ confirmed exoplanet host systems, 39,000+ records. Includes orbital parameters, planetary radius (R⊕), mass (M⊕), discovery method and facility, equilibrium temperature, and host star astrometry.',
+    url: 'https://exoplanetarchive.ipac.caltech.edu',
   },
 ];
 
