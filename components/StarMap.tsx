@@ -334,47 +334,56 @@ function Scene2D({
   );
 }
 
-// ── 2D hover + click overlay (DOM, reads projRef) ─────────
-function TwoDHoverOverlay({
-  projRef,
-}: {
-  projRef: React.MutableRefObject<ProjEntry[]>;
-}) {
-  const { theme, setSelected, mode, setMeasureTarget } = useStore();
-  const [hovered, setHovered] = useState<{ x: number; y: number; stars: Star[] } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+// ── Root export ───────────────────────────────────────────
+export function StarMap() {
+  const [exoHosts, setExoHosts] = useState<Star[]>([]);
+  const { theme, mapMode, setSelected, mode, setMeasureTarget } = useStore();
+  const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
+
+  // Shared ref: TwoDDotsCanvas (inside Canvas) writes projected positions each frame.
+  const projRef = useRef<ProjEntry[]>([]);
+
+  // 2D hover state — lives here so the tooltip renders outside the blocking overlay.
+  type Hovered2D = { x: number; y: number; stars: Star[] };
+  const [hovered2D, setHovered2D] = useState<Hovered2D | null>(null);
+  // While the cursor is over the tooltip panel we pin it open (don't clear on mousemove).
+  const tooltipPinned = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
   const CLUSTER_PX = 12;
 
-  const nearby = useCallback((mx: number, my: number) =>
+  const nearby2D = useCallback((mx: number, my: number) =>
     projRef.current
       .filter(p => Math.hypot(p.sx - mx, p.sy - my) < CLUSTER_PX)
       .map(p => p.star),
-  [projRef]);
+  []);
 
-  const handleSelect = useCallback((star: Star) => {
+  const handleSelect2D = useCallback((star: Star) => {
     if (mode === 'measure') setMeasureTarget(star); else setSelected(star);
-    setHovered(null);
+    setHovered2D(null);
+    tooltipPinned.current = false;
   }, [mode, setSelected, setMeasureTarget]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
+  // mousemove on the root container — bubbles from the THREE canvas so OrbitControls
+  // still receives all pointer events (no blocking overlay).
+  const handleMouseMove2D = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (mapMode !== '2d' || tooltipPinned.current) return;
+    if (!rootRef.current) return;
+    const rect = rootRef.current.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    const hits = nearby(mx, my);
-    setHovered(hits.length > 0 ? { x: mx, y: my, stars: hits.slice(0, 20) } : null);
-  }, [nearby]);
+    const hits = nearby2D(mx, my);
+    setHovered2D(hits.length > 0 ? { x: mx, y: my, stars: hits.slice(0, 20) } : null);
+  }, [mapMode, nearby2D]);
 
-  const handleMouseLeave = useCallback(() => setHovered(null), []);
-
-  // Click: single star → select immediately; multiple → show tooltip
-  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const hits = nearby(e.clientX - rect.left, e.clientY - rect.top);
-    if (hits.length === 1) handleSelect(hits[0]);
-    // If multiple, the hover tooltip is already showing — user picks from list
-  }, [nearby, handleSelect]);
+  const handleClick2D = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (mapMode !== '2d' || tooltipPinned.current) return;
+    if (!rootRef.current) return;
+    const rect = rootRef.current.getBoundingClientRect();
+    const hits = nearby2D(e.clientX - rect.left, e.clientY - rect.top);
+    if (hits.length === 1) handleSelect2D(hits[0]);
+    // Multiple → tooltip is showing; user selects from the panel.
+  }, [mapMode, nearby2D, handleSelect2D]);
 
   const dark = theme === 'dark';
   const panelBg  = dark ? 'rgba(10,8,5,0.97)'    : 'rgba(240,236,224,0.97)';
@@ -386,62 +395,12 @@ function TwoDHoverOverlay({
   const rowHov   = dark ? 'rgba(200,180,140,0.08)': 'rgba(26,18,8,0.06)';
 
   return (
-    <div ref={containerRef}
-      style={{ position: 'absolute', inset: 0, pointerEvents: 'auto', zIndex: 8, cursor: 'crosshair' }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
+    <div ref={rootRef}
+      style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+      onMouseMove={handleMouseMove2D}
+      onClick={handleClick2D}
+      onMouseLeave={() => { if (mapMode === '2d') setHovered2D(null); }}
     >
-      {hovered && hovered.stars.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          left: Math.min(hovered.x + 14, (containerRef.current?.clientWidth ?? 800) - 300),
-          top: Math.max(hovered.y - 8, 4),
-          background: panelBg, border: `1px solid ${border}`,
-          borderRadius: 3, padding: '0.4rem 0', zIndex: 35,
-          minWidth: 180, maxWidth: 280, maxHeight: 260, overflowY: 'auto',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.25)', pointerEvents: 'auto',
-        }}>
-          {hovered.stars.length > 1 && (
-            <div style={{ fontSize: '0.6rem', fontFamily: 'var(--font-mono)', fontWeight: 'bold',
-              letterSpacing: '0.1em', textTransform: 'uppercase', color: hdrColor,
-              padding: '0 0.7rem 0.3rem',
-              borderBottom: `1px solid ${rowBdr}`, marginBottom: '0.2rem' }}>
-              {hovered.stars.length} objects at this location
-            </div>
-          )}
-          {hovered.stars.map(s => (
-            <button key={s.id} onClick={ev => { ev.stopPropagation(); handleSelect(s); }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none',
-                border: 'none', padding: '0.4rem 0.7rem', cursor: 'pointer',
-                borderBottom: `1px solid ${rowBdr}` }}
-              onMouseEnter={e => (e.currentTarget.style.background = rowHov)}
-              onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: namColor }}>{s.name}</div>
-              <div style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', fontWeight: 'bold',
-                color: metColor, marginTop: '0.1rem' }}>
-                {s.type} · {s.dist_pc > 0 ? `${s.dist_pc.toFixed(1)} pc` : 'here'}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Root export ───────────────────────────────────────────
-export function StarMap() {
-  const [exoHosts, setExoHosts] = useState<Star[]>([]);
-  const { theme, mapMode } = useStore();
-  const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
-
-  // Shared ref: TwoDDotsCanvas writes projected positions, TwoDHoverOverlay reads them.
-  // This gives the DOM overlay pixel-accurate hit detection that tracks pan and zoom.
-  const projRef = useRef<ProjEntry[]>([]);
-
-  return (
-    <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
       <DataLoader />
       <ExoplanetLoader onLoad={setExoHosts} />
       <Canvas
@@ -456,7 +415,56 @@ export function StarMap() {
           }
         </Suspense>
       </Canvas>
-      {mapMode === '2d' && <TwoDHoverOverlay projRef={projRef} />}
+
+      {/* 2D tooltip — outer wrapper is pointer-events:none so it never blocks
+          OrbitControls or hover detection; only the panel itself is interactive. */}
+      {mapMode === '2d' && hovered2D && hovered2D.stars.length > 0 && (
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 20 }}>
+          <div
+            style={{
+              position: 'absolute',
+              left: Math.min(hovered2D.x + 14, (rootRef.current?.clientWidth ?? 800) - 300),
+              top: Math.max(hovered2D.y - 8, 4),
+              background: panelBg, border: `1px solid ${border}`,
+              borderRadius: 3, padding: '0.4rem 0',
+              minWidth: 180, maxWidth: 280, maxHeight: 260, overflowY: 'auto',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+              pointerEvents: 'auto', // only the panel captures clicks
+            }}
+            onMouseEnter={() => { tooltipPinned.current = true; }}
+            onMouseLeave={() => { tooltipPinned.current = false; setHovered2D(null); }}
+          >
+            {hovered2D.stars.length > 1 && (
+              <div style={{
+                fontSize: '0.6rem', fontFamily: 'var(--font-mono)', fontWeight: 'bold',
+                letterSpacing: '0.1em', textTransform: 'uppercase', color: hdrColor,
+                padding: '0 0.7rem 0.3rem',
+                borderBottom: `1px solid ${rowBdr}`, marginBottom: '0.2rem',
+              }}>
+                {hovered2D.stars.length} objects at this location
+              </div>
+            )}
+            {hovered2D.stars.map(s => (
+              <button key={s.id}
+                onClick={ev => { ev.stopPropagation(); handleSelect2D(s); }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left', background: 'none',
+                  border: 'none', padding: '0.4rem 0.7rem', cursor: 'pointer',
+                  borderBottom: `1px solid ${rowBdr}`,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = rowHov)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+              >
+                <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: namColor }}>{s.name}</div>
+                <div style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', fontWeight: 'bold',
+                  color: metColor, marginTop: '0.1rem' }}>
+                  {s.type} · {s.dist_pc > 0 ? `${s.dist_pc.toFixed(1)} pc` : 'here'}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
