@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "updatedAt": 1774806728936,
+  "nodeCount": 13,
+  "nodes": {
+    "mem-MEMORY-memory-index": {
+      "id": "mem-MEMORY-memory-index",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728930
+    },
+    "mem-project_terra----": {
+      "id": "mem-project_terra----",
+      "category": "project_terra",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728931
+    },
+    "mem-project_terra-completed-as-of-2026-03-28": {
+      "id": "mem-project_terra-completed-as-of-2026-03-28",
+      "category": "project_terra",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728931
+    },
+    "mem-project_terra-environment-variables-needed-o": {
+      "id": "mem-project_terra-environment-variables-needed-o",
+      "category": "project_terra",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728931
+    },
+    "mem-project_terra-completed-as-of-2026-03-28--co": {
+      "id": "mem-project_terra-completed-as-of-2026-03-28--co",
+      "category": "project_terra",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728931
+    },
+    "mem-project_terra-completed-as-of-2026-03-28--se": {
+      "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "category": "project_terra",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728931
+    },
+    "mem-project_terra-open---potential-next-items--n": {
+      "id": "mem-project_terra-open---potential-next-items--n",
+      "category": "project_terra",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728931
+    },
+    "mem-user_profile----": {
+      "id": "mem-user_profile----",
+      "category": "user_profile",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728931
+    },
+    "mem-MEMORY-memories": {
+      "id": "mem-MEMORY-memories",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728932
+    },
+    "mem-project_cms_plan----": {
+      "id": "mem-project_cms_plan----",
+      "category": "project_cms_plan",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728932
+    },
+    "mem-project_map_creator----": {
+      "id": "mem-project_map_creator----",
+      "category": "project_map_creator",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728932
+    },
+    "mem-project_platform_shift----": {
+      "id": "mem-project_platform_shift----",
+      "category": "project_platform_shift",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728932
+    },
+    "mem-project_topics_taxonomy----": {
+      "id": "mem-project_topics_taxonomy----",
+      "category": "project_topics_taxonomy",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1774806728932
+    }
+  },
+  "edges": [
+    {
+      "sourceId": "mem-project_terra----",
+      "targetId": "mem-project_terra-completed-as-of-2026-03-28",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_terra-completed-as-of-2026-03-28",
+      "targetId": "mem-project_terra-environment-variables-needed-o",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_terra-environment-variables-needed-o",
+      "targetId": "mem-project_terra-completed-as-of-2026-03-28--co",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_terra-completed-as-of-2026-03-28--co",
+      "targetId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "targetId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "targetId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "targetId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "targetId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "type": "temporal",
+      "weight": 0.5
+    },
+    {
+      "sourceId": "mem-project_terra-completed-as-of-2026-03-28--se",
+      "targetId": "mem-project_terra-open---potential-next-items--n",
+      "type": "temporal",
+      "weight": 0.5
+    }
+  ],
+  "pageRanks": {
+    "mem-MEMORY-memory-index": 0.03314683595206687,
+    "mem-project_terra----": 0.03314683595206687,
+    "mem-project_terra-completed-as-of-2026-03-28": 0.061321674229882425,
+    "mem-project_terra-environment-variables-needed-o": 0.08527031333122902,
+    "mem-project_terra-completed-as-of-2026-03-28--co": 0.10562664906838079,
+    "mem-project_terra-completed-as-of-2026-03-28--se": 0.3841537600347612,
+    "mem-project_terra-open---potential-next-items--n": 0.09845291571921186,
+    "mem-user_profile----": 0.03314683595206687,
+    "mem-MEMORY-memories": 0.03314683595206687,
+    "mem-project_cms_plan----": 0.03314683595206687,
+    "mem-project_map_creator----": 0.03314683595206687,
+    "mem-project_platform_shift----": 0.03314683595206687,
+    "mem-project_topics_taxonomy----": 0.03314683595206687
+  }
+}

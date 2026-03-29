@@ -1,0 +1,223 @@
+[
+  {
+    "id": "mem-MEMORY-memory-index",
+    "key": "memory-index",
+    "content": "- [User Profile](user_profile.md) — Isaac Dellinger, owner of Terra Incognita, independent journalism Next.js app\n- [Project State](project_terra.md) — Terra Incognita project status, what's done, what's next",
+    "summary": "Memory Index",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728930
+  },
+  {
+    "id": "mem-project_terra----",
+    "key": "-",
+    "content": "name: Project State — Terra Incognita\ndescription: Current build status, completed features, and open items for the Terra Incognita Next.js app\ntype: project\n---\n\nRepo: github.com/owendlgr/terra-incognita, branch: `nextjs`. Deployed on Vercel.\nWorking directory: `/Users/isaacdellinger/Downloads/terra-incognita-next`",
+    "summary": "---",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-completed-as-of-2026-03-28",
+    "key": "completed-as-of-2026-03-28",
+    "content": "- Full Next.js 16.2.1 App Router setup with Vercel Postgres\n- Nav: hover dropdown category menus (World/Conflict/Politics/Technology/Health/Culture), standalone links, mobile accordion\n- 36-topic taxonomy across 7 categories in `src/lib/constants.ts`\n- Category pages: /world, /conflict, /politics, /technology, /health, /culture with topic filter pills\n- Globe map (Mapbox) with scroll zoom disabled\n- Cookie banner: slides from bottom, site-branded\n- Auth: sign in / sign up / 2FA / session cookies",
+    "summary": "Completed as of 2026-03-28",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-environment-variables-needed-o",
+    "key": "environment-variables-needed-on-vercel",
+    "content": "- `ADMIN_EMAIL` — your email address, gets admin role on login\n- `RESEND_API_KEY` — for transactional email\n- `RESEND_FROM` — sending address (optional, defaults to noreply@terraincognita.news)\n- `NEXT_PUBLIC_MAPBOX_TOKEN` — for globe map\n- `POSTGRES_URL` (and related) — Vercel Postgres",
+    "summary": "Environment Variables Needed on Vercel",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-completed-as-of-2026-03-28--co",
+    "key": "completed-as-of-2026-03-28-continued-",
+    "content": "- Comment notifications wired: comments POST notifies article author + parent comment author on reply\n- Community reply notifications wired: replies POST notifies post author\n- Gallery sample file added at content/gallery/sample-dispatch.md (format: title/date/photo/caption/location/category/article_ref)\n- Maps page: fully implemented (Globe + article pins + SavedMapsGallery)\n- Wire widget: fully implemented (8 RSS feeds via /api/news)\n- Stripe: fully implemented (checkout + webhook + tier assig",
+    "summary": "Completed as of 2026-03-28 (continued)",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+    "key": "completed-as-of-2026-03-28-session-2-",
+    "content": "- Email opt-out wired: `email_opt_out` column checked before sending in both `comments/route.ts` and `community/replies/[id]/route.ts`\n- `setImmediate` replaced with `after()` from `next/server` in both notification routes (Vercel-safe)\n- Comment DELETE: now returns 404 instead of silent 200 when comment not found/not owned\n- Community replies: added guard for `user` undefined when ADMIN_EMAIL has no DB row\n- `/api/translate`: now requires session auth (was fully open to unauthenticated requests",
+    "summary": "Completed as of 2026-03-28 (session 2)",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+    "key": "completed-as-of-2026-03-28-session-3-",
+    "content": "- `src/middleware.ts`: security headers on all responses + auth gate on all `/api/*` (public exceptions listed) + page redirect for /write, /admin/*, /profile, /saved, /community. NOTE: Next.js 16 renamed middleware→proxy; default export works via backward compat.\n- Rate limiting (DB-backed via `rate_limits` table + `src/lib/rateLimit.ts`): login (10/15min), signup (3/hr), comments (20/hr), community posts (10/hr), community replies (30/hr)\n- Articles DB: `POST /api/articles` creates articles wi",
+    "summary": "Completed as of 2026-03-28 (session 3)",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+    "key": "completed-as-of-2026-03-28-session-4-",
+    "content": "- Membership paid tier: `src/lib/tiers.ts` (TIERS, isMember, getMemberBadge), /support tier cards, supporter badge on profile, early access gate via `public_at` column, /api/checkout uses STRIPE_PRICE_* env vars. New env vars needed: STRIPE_PRICE_SUPPORTER, STRIPE_PRICE_PATRON, STRIPE_PRICE_SUSTAINER\n- Writer follow system: FollowButton component, /api/follow/[email]/count endpoint, /api/articles/following feed, \"Following\" tab on /profile\n- Admin role check: checkAdmin() now checks DB role colu",
+    "summary": "Completed as of 2026-03-28 (session 4)",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+    "key": "completed-as-of-2026-03-28-session-5-",
+    "content": "- Weekly email digest: sendWeeklyDigest() in email.ts, /api/digest/articles, /api/digest/send (batched, test-send support), /admin/digest compose UI (article selector, editorial note, issue number, test/send)\n- Writer style guide: content/style-guide.md — voice, story standards, structure, language, ethics, submission process, rights & credit",
+    "summary": "Completed as of 2026-03-28 (session 5)",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-completed-as-of-2026-03-28--se",
+    "key": "completed-as-of-2026-03-28-session-6-",
+    "content": "- Globe zoom fixed: HomeMap.tsx now has scrollZoom/doubleClickZoom/touchZoomRotate/boxZoom/keyboard all disabled (was missing these flags despite Globe.tsx having them)\n- Nav: TopicNav removed from home page (was second navbar); Politics removed from NAV_CATEGORIES + TOPIC_CATEGORY (politics topics now map to 'world'); nav-inner made full-width (removed max-width/margin:auto constraint)\n- Security: /api/token disabled (was exposing GitHub PAT to all authenticated users); OAuth callback XSS fixed",
+    "summary": "Completed as of 2026-03-28 (session 6)",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-project_terra-open---potential-next-items--n",
+    "key": "open-potential-next-items-non-technical-",
+    "content": "- Add real gallery photos to content/gallery/ (Isaac's own photos — see sample-dispatch.md format)\n- Set up Stripe recurring subscription products → add STRIPE_PRICE_SUPPORTER, STRIPE_PRICE_PATRON, STRIPE_PRICE_SUSTAINER to Vercel env vars\n- Begin 501(c3) incorporation in your state (~$100-200 + IRS Form 1023-EZ)\n- Set up brand social accounts: X, Instagram, LinkedIn\n- Recruit first 3 writers via journalism school outreach\n- Publish minimum 10 articles before public launch\n\n**Why:** This is Isaa",
+    "summary": "Open / Potential Next Items (non-technical)",
+    "namespace": "project_terra",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/project_terra.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-user_profile----",
+    "key": "-",
+    "content": "name: User Profile\ndescription: Isaac Dellinger — owner and author of Terra Incognita, independent journalism publication\ntype: user\n---\n\nIsaac Dellinger is the sole author and owner of Terra Incognita, an independent journalism and photojournalism publication. He is hands-on with the codebase and makes product decisions directly. Prefers concise, direct responses. Works in sessions, picks up where he left off the next day.",
+    "summary": "---",
+    "namespace": "user_profile",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger/memory/user_profile.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728931
+  },
+  {
+    "id": "mem-MEMORY-memories",
+    "key": "memories",
+    "content": "- [project_cms_plan.md](project_cms_plan.md) — Custom CMS editor at /write with TipTap, GitHub API save\n- [project_map_creator.md](project_map_creator.md) — Map creator tool for CMS (pin maps + choropleth, static/interactive)\n- [project_platform_shift.md](project_platform_shift.md) — TI is a platform, not a personal site — use collective \"we\" language, not \"by Isaac\"\n- [project_topics_taxonomy.md](project_topics_taxonomy.md) — Updated topics: World, Conflict, Politics, Technology, Health, Cultur",
+    "summary": "Memories",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger-Downloads-Terra-Incognita/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728932
+  },
+  {
+    "id": "mem-project_cms_plan----",
+    "key": "-",
+    "content": "name: CMS overhaul plan\ndescription: User wants to replace basic Sveltia CMS with a better editing experience — likely custom built-in editor at /write\ntype: project\n---\n\nUser is dissatisfied with current Sveltia CMS (\"very basic, doesn't allow for much creativity\"). Also tried TinaCMS but hit infinite loading screens.\n\nPreferred direction: **Custom built-in editor** at `/write` behind auth.\n- TipTap or ProseMirror rich text editor\n- Saves markdown to GitHub via API (existing GITHUB_TOKEN infra)",
+    "summary": "---",
+    "namespace": "project_cms_plan",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger-Downloads-Terra-Incognita/memory/project_cms_plan.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728932
+  },
+  {
+    "id": "mem-project_map_creator----",
+    "key": "-",
+    "content": "name: CMS map creator tool\ndescription: User wants a map creator tool in the CMS editor for creating both pin maps and choropleth/data maps, with option to export as static image or interactive embed per map\ntype: project\n---\n\n**Status:** Not yet built — \"Coming Soon\" card in /admin dashboard. User wants to build it next session.\n\n**Known bug to fix:** HomeMap theme toggle doesn't update the map background color live — only works on page reload. The `useEffect` that handles theme changes (`mapRe",
+    "summary": "---",
+    "namespace": "project_map_creator",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger-Downloads-Terra-Incognita/memory/project_map_creator.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728932
+  },
+  {
+    "id": "mem-project_platform_shift----",
+    "key": "-",
+    "content": "name: Platform not personal site\ndescription: Terra Incognita is a humanitarian journalism network for emerging Gen Z voices, NOT a personal journalism site — use collective \"we\" language\ntype: project\n---\n\nTerra Incognita is a **humanitarian journalism network for emerging voices** — a network-platform hybrid of vetted Gen Z journalists publishing under a shared editorial identity. NOT a solo blog or personal journalism site.\n\n**Mission (from STRATEGY.md):** \"Built to document how humanity trea",
+    "summary": "---",
+    "namespace": "project_platform_shift",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger-Downloads-Terra-Incognita/memory/project_platform_shift.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728932
+  },
+  {
+    "id": "mem-project_topics_taxonomy----",
+    "key": "-",
+    "content": "name: Updated topics and taxonomy (2026-03)\ndescription: Terra Incognita's live site topics have shifted from 6 simple categories to a full hierarchical taxonomy with 6 main sections and subsections\ntype: project\n---\n\nThe site's topic structure has been significantly expanded from the original 6 flat categories. As of 2026-03-28, the live site uses:\n\n**Main Sections:**\n- World (Middle East, Iran-Israel War, Russia-Ukraine, Europe, Africa, Asia, Latin America)\n- Conflict (Armed Conflict, Humanita",
+    "summary": "---",
+    "namespace": "project_topics_taxonomy",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/Users/isaacdellinger/.claude/projects/-Users-isaacdellinger-Downloads-Terra-Incognita/memory/project_topics_taxonomy.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1774806728932
+  }
+]
