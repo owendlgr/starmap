@@ -480,7 +480,6 @@ function Scene() {
       <GaiaField />
       <ConstellationLines stars={stars} />
       <StarLabels stars={stars} />
-      <DepthLines stars={stars} />
       {selectedStar && <SelectionMarker star={selectedStar} color="#c8a96a" />}
       {measureTarget && <SelectionMarker star={measureTarget} color="#6ab4c8" />}
       {selectedStar && measureTarget && <MeasureLine from={selectedStar} to={measureTarget} />}
