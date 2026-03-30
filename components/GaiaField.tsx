@@ -113,8 +113,6 @@ function readStarFromBuffer(buf: ArrayBuffer, localIdx: number, globalIdx: numbe
 interface ChunkData { buf: ArrayBuffer; count: number; globalOffset: number }
 
 function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.ShaderMaterial }) {
-  const { mode, setSelected, setMeasureTarget } = useStore();
-
   const geometry = useMemo(() => {
     const { pos, sizes } = buildGeomBuffers(chunk.buf, chunk.count);
     const geo = new THREE.BufferGeometry();
@@ -124,21 +122,12 @@ function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.Shad
     return geo;
   }, [chunk]);
 
-  // Dispose geometry on unmount to prevent GPU memory leaks
   useEffect(() => {
     return () => { geometry.dispose(); };
   }, [geometry]);
 
-  const handleClick = (e: THREE.Event) => {
-    const ev = e as unknown as { intersections: { index: number }[] };
-    if (!ev.intersections?.length) return;
-    const localIdx = ev.intersections[0].index;
-    if (localIdx == null) return;
-    const star = readStarFromBuffer(chunk.buf, localIdx, chunk.globalOffset + localIdx);
-    if (mode === 'measure') setMeasureTarget(star); else setSelected(star);
-  };
-
-  return <points geometry={geometry} material={material} onClick={handleClick} frustumCulled />;
+  // Gaia stars are background-only — no click handler, no raycast
+  return <points geometry={geometry} material={material} frustumCulled raycast={() => {}} />;
 }
 
 // ── Main GaiaField component ──────────────────────────────

@@ -25,9 +25,15 @@ function DataLoader() {
   const { addStars } = useStore();
   useEffect(() => {
     fetch('/data/stars_verified.json')
-      .then(r => r.json())
-      .then((d: StarChunk) => addStars('verified', d.stars))
-      .catch(() => {});
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d: StarChunk) => {
+        console.log(`[StarMap] Loaded ${d.stars.length} stars from verified catalog`);
+        addStars('verified', d.stars);
+      })
+      .catch(err => console.error('[StarMap] Failed to load star data:', err));
   }, [addStars]);
   return null;
 }
