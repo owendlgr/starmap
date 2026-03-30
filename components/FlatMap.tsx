@@ -17,11 +17,17 @@ export function FlatMap() {
     selectedStar, setSelected, mode, setMeasureTarget } = useStore();
 
   // Pan/zoom state
-  const [offset, setOffset] = useState({ x: 0, y: 0 }); // pan offset in screen pixels
-  const [scale, setScale] = useState(15); // pixels per parsec
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [scale, setScale] = useState(80); // start zoomed in (80 px/pc ≈ nearby stars visible)
+  const [hoveredStar, setHoveredStar] = useState<Star | null>(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const dragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const dragOffsetStart = useRef({ x: 0, y: 0 });
+  const offsetRef = useRef(offset);
+  offsetRef.current = offset;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
 
   const dark = theme === 'dark';
 
@@ -179,11 +185,11 @@ export function FlatMap() {
 
     // ── Labels ──
     if (showLabels) {
-      ctx.font = 'bold 9px Georgia, serif';
-      ctx.fillStyle = dark ? 'rgba(232, 224, 208, 0.8)' : 'rgba(26, 18, 8, 0.75)';
+      ctx.font = 'bold 11px Georgia, serif';
+      ctx.fillStyle = dark ? 'rgba(232, 224, 208, 0.85)' : 'rgba(26, 18, 8, 0.8)';
       for (const { sx, sy, star } of visibleStars) {
         if (!star.name) continue;
-        ctx.fillText(star.name, sx + 6, sy - 4);
+        ctx.fillText(star.name, sx + 7, sy - 5);
       }
     }
 
@@ -195,35 +201,49 @@ export function FlatMap() {
   // ── Mouse handlers ──
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const factor = e.deltaY > 0 ? 0.9 : 1.1;
-    // Zoom toward cursor position
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const factor = e.deltaY > 0 ? 0.85 : 1.18; // slightly more aggressive zoom
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     const cx = rect.width / 2;
     const cy = rect.height / 2;
-    // Vector from center to cursor in screen space
-    const dx = mx - cx - offset.x;
-    const dy = my - cy - offset.y;
-    setScale(prev => {
-      const newScale = Math.max(0.01, Math.min(500, prev * factor));
-      const ratio = newScale / prev;
-      // Adjust offset so the point under cursor stays put
-      setOffset(o => ({
-        x: o.x - dx * (ratio - 1),
-        y: o.y - dy * (ratio - 1),
-      }));
-      return newScale;
-    });
-  }, [offset]);
+
+    const curOffset = offsetRef.current;
+    const curScale = scaleRef.current;
+    const newScale = Math.max(0.5, Math.min(1000, curScale * factor));
+    const ratio = newScale / curScale;
+
+    // Point under cursor in world coords stays fixed
+    const newOffset = {
+      x: mx - cx - (mx - cx - curOffset.x) * ratio,
+      y: my - cy - (my - cy - curOffset.y) * ratio,
+    };
+
+    setScale(newScale);
+    setOffset(newOffset);
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     dragging.current = true;
     dragStart.current = { x: e.clientX, y: e.clientY };
-    dragOffsetStart.current = { ...offset };
-  }, [offset]);
+    dragOffsetStart.current = { ...offsetRef.current };
+  }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    // Hover detection
+    if (!dragging.current && canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const visible = (canvasRef as unknown as { _visibleStars: { sx: number; sy: number; star: Star }[] })._visibleStars || [];
+      let found: Star | null = null;
+      for (const { sx, sy, star } of visible) {
+        if (Math.hypot(sx - mx, sy - my) < 12) { found = star; break; }
+      }
+      setHoveredStar(found);
+      setHoverPos({ x: e.clientX, y: e.clientY });
+    }
+
     if (!dragging.current) return;
     setOffset({
       x: dragOffsetStart.current.x + (e.clientX - dragStart.current.x),
@@ -286,7 +306,7 @@ export function FlatMap() {
   ) : null;
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', cursor: dragging.current ? 'grabbing' : 'grab' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', cursor: hoveredStar ? 'pointer' : dragging.current ? 'grabbing' : 'grab' }}>
       <canvas
         ref={canvasRef}
         onWheel={handleWheel}
@@ -298,6 +318,25 @@ export function FlatMap() {
         style={{ width: '100%', height: '100%', display: 'block' }}
       />
       {info}
+
+      {/* Hover tooltip */}
+      {hoveredStar && !selectedStar && (
+        <div style={{
+          position: 'fixed', left: hoverPos.x + 16, top: hoverPos.y - 10, zIndex: 30,
+          background: dark ? 'rgba(240,236,224,0.95)' : 'rgba(20,16,10,0.95)',
+          color: dark ? '#1a1208' : '#f0e8d8',
+          padding: '0.4rem 0.7rem',
+          border: `1px solid ${dark ? 'rgba(26,18,8,0.15)' : 'rgba(200,180,140,0.25)'}`,
+          pointerEvents: 'none',
+          fontFamily: 'Georgia, serif',
+        }}>
+          <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{hoveredStar.name}</div>
+          <div style={{ fontSize: '0.65rem', fontFamily: "'Courier New', monospace", color: dark ? '#6a5e4e' : '#b0a48e', marginTop: '0.15rem' }}>
+            {hoveredStar.spectral} · mag {hoveredStar.mag.toFixed(1)} · {formatDistance(hoveredStar.dist_pc, scaleUnit)}
+          </div>
+        </div>
+      )}
+
       {/* Scale indicator */}
       <div style={{
         position: 'absolute', bottom: '1rem', left: '1rem',
