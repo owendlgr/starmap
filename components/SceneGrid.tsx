@@ -6,65 +6,112 @@ import { useStore } from '@/lib/useStore';
 // 10 light years per cell in parsecs
 const CELL = 10 * 0.30660; // ~3.066 pc
 
-// Grid extends far enough to feel infinite (fog hides the edges).
-// We draw lines at 10 ly intervals across a large span.
-// To keep vertex count sane, we only draw lines on the XZ galactic plane
-// and a few vertical (Y) reference planes.
-const EXTENT = 1500; // pc — well beyond visible range (fog starts at 80,000 but stars are within ~1000 pc)
-const STEPS = Math.ceil(EXTENT / CELL); // ~490 lines per axis direction
+// Grid extent: +/- 100 ly = +/- 30.66 pc
+const EXTENT_LY = 100;
+const EXTENT = EXTENT_LY * 0.30660; // ~30.66 pc
+const STEPS = Math.round(EXTENT / CELL); // 10 steps per side (20 cells across)
 
-function buildGridGeometry(): THREE.BufferGeometry {
-  const pts: number[] = [];
+/**
+ * Builds a cubic wireframe cage grid.
+ *
+ * Strategy for the "cage" effect:
+ * - Bottom face (Y = -EXTENT): full XZ grid
+ * - Top face (Y = +EXTENT): full XZ grid
+ * - Vertical lines connecting every grid intersection on top/bottom
+ * - Four vertical wall faces: internal horizontal lines at each Y level
+ *
+ * Returns two geometries: edges (outer cube frame) and internals (inner lines).
+ */
+function buildCageGeometries(): {
+  edgeGeo: THREE.BufferGeometry;
+  internalGeo: THREE.BufferGeometry;
+} {
+  const edgePts: number[] = [];
+  const internalPts: number[] = [];
 
-  // ── XZ plane grid (the main "floor" grid at every Y=0) ──
-  // Lines parallel to X (varying Z)
-  for (let i = -STEPS; i <= STEPS; i++) {
-    const z = i * CELL;
-    pts.push(-EXTENT, 0, z, EXTENT, 0, z);
-  }
-  // Lines parallel to Z (varying X)
-  for (let i = -STEPS; i <= STEPS; i++) {
-    const x = i * CELL;
-    pts.push(x, 0, -EXTENT, x, 0, EXTENT);
-  }
+  // Helper: is this coordinate on the outer boundary?
+  const isEdge = (i: number) => i === -STEPS || i === STEPS;
 
-  // ── XY plane grid (vertical wall at Z=0) ──
-  // Lines parallel to X (varying Y)
-  for (let i = -STEPS; i <= STEPS; i++) {
-    const y = i * CELL;
-    pts.push(-EXTENT, y, 0, EXTENT, y, 0);
-  }
-  // Lines parallel to Y (varying X)
-  for (let i = -STEPS; i <= STEPS; i++) {
-    const x = i * CELL;
-    pts.push(x, -EXTENT, 0, x, EXTENT, 0);
-  }
+  // ── Bottom face (Y = -EXTENT): full XZ grid ──
+  const yBottom = -EXTENT;
+  const yTop = EXTENT;
 
-  // ── YZ plane grid (vertical wall at X=0) ──
-  // Lines parallel to Z (varying Y)
   for (let i = -STEPS; i <= STEPS; i++) {
-    const y = i * CELL;
-    pts.push(0, y, -EXTENT, 0, y, EXTENT);
-  }
-  // Lines parallel to Y (varying Z)
-  for (let i = -STEPS; i <= STEPS; i++) {
-    const z = i * CELL;
-    pts.push(0, -EXTENT, z, 0, EXTENT, z);
+    const coord = i * CELL;
+    // Lines parallel to X at bottom
+    const isEdgeLine = i === -STEPS || i === STEPS;
+    const arr = isEdgeLine ? edgePts : internalPts;
+    arr.push(-EXTENT, yBottom, coord, EXTENT, yBottom, coord);
+    // Lines parallel to Z at bottom
+    arr.push(coord, yBottom, -EXTENT, coord, yBottom, EXTENT);
   }
 
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
-  return geo;
+  // ── Top face (Y = +EXTENT): full XZ grid ──
+  for (let i = -STEPS; i <= STEPS; i++) {
+    const coord = i * CELL;
+    const isEdgeLine = i === -STEPS || i === STEPS;
+    const arr = isEdgeLine ? edgePts : internalPts;
+    arr.push(-EXTENT, yTop, coord, EXTENT, yTop, coord);
+    arr.push(coord, yTop, -EXTENT, coord, yTop, EXTENT);
+  }
+
+  // ── Vertical lines connecting top and bottom at every grid intersection ──
+  for (let ix = -STEPS; ix <= STEPS; ix++) {
+    for (let iz = -STEPS; iz <= STEPS; iz++) {
+      const x = ix * CELL;
+      const z = iz * CELL;
+      const onEdge = isEdge(ix) || isEdge(iz);
+      // Corner verticals and edge verticals go to edgePts
+      const isCornerOrEdge = isEdge(ix) && isEdge(iz);
+      const arr = isCornerOrEdge ? edgePts : onEdge ? edgePts : internalPts;
+      arr.push(x, yBottom, z, x, yTop, z);
+    }
+  }
+
+  // ── Horizontal lines on the 4 vertical wall faces (at each internal Y level) ──
+  // These create the horizontal "rungs" on each wall face
+  for (let iy = -STEPS + 1; iy < STEPS; iy++) {
+    const y = iy * CELL;
+
+    // Front wall (Z = +EXTENT): lines parallel to X
+    internalPts.push(-EXTENT, y, EXTENT, EXTENT, y, EXTENT);
+    // Back wall (Z = -EXTENT): lines parallel to X
+    internalPts.push(-EXTENT, y, -EXTENT, EXTENT, y, -EXTENT);
+    // Left wall (X = -EXTENT): lines parallel to Z
+    internalPts.push(-EXTENT, y, -EXTENT, -EXTENT, y, EXTENT);
+    // Right wall (X = +EXTENT): lines parallel to Z
+    internalPts.push(EXTENT, y, -EXTENT, EXTENT, y, EXTENT);
+  }
+
+  const edgeGeo = new THREE.BufferGeometry();
+  edgeGeo.setAttribute(
+    'position',
+    new THREE.BufferAttribute(new Float32Array(edgePts), 3)
+  );
+
+  const internalGeo = new THREE.BufferGeometry();
+  internalGeo.setAttribute(
+    'position',
+    new THREE.BufferAttribute(new Float32Array(internalPts), 3)
+  );
+
+  return { edgeGeo, internalGeo };
 }
 
-// Darkened galactic plane (Y=0)
+// Darkened galactic plane (Y=0) — sized to match the cube
 function buildPlaneGeometry(): THREE.BufferGeometry {
   const S = EXTENT;
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
-    -S, 0, -S,  S, 0, -S,  S, 0, S,
-    -S, 0, -S,  S, 0, S,  -S, 0, S,
-  ]), 3));
+  geo.setAttribute(
+    'position',
+    new THREE.BufferAttribute(
+      new Float32Array([
+        -S, 0, -S, S, 0, -S, S, 0, S,
+        -S, 0, -S, S, 0, S, -S, 0, S,
+      ]),
+      3
+    )
+  );
   return geo;
 }
 
@@ -72,17 +119,28 @@ export function SceneGrid() {
   const { theme } = useStore();
   const dark = theme === 'dark';
 
-  const gridGeo = useMemo(() => buildGridGeometry(), []);
+  const { edgeGeo, internalGeo } = useMemo(() => buildCageGeometries(), []);
   const planeGeo = useMemo(() => buildPlaneGeometry(), []);
+
+  const lineColor = dark ? '#6a6058' : '#908878';
 
   return (
     <group>
-      {/* 10 ly cell grid on 3 major planes */}
-      <lineSegments geometry={gridGeo}>
+      {/* Outer cube edges — higher opacity */}
+      <lineSegments geometry={edgeGeo}>
         <lineBasicMaterial
-          color={dark ? '#4a4038' : '#a09888'}
+          color={lineColor}
           transparent
-          opacity={0.4}
+          opacity={0.5}
+        />
+      </lineSegments>
+
+      {/* Internal grid lines — lower opacity */}
+      <lineSegments geometry={internalGeo}>
+        <lineBasicMaterial
+          color={lineColor}
+          transparent
+          opacity={0.25}
         />
       </lineSegments>
 

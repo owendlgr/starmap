@@ -100,21 +100,43 @@ function CameraManager() {
     zoomLerpActive.current = false;
   }, [_cameraFlyTick, cameraFlyTarget, camera]);
 
-  // 2D: snap to bird's-eye
+  // 2D: snap camera straight down above the current orbit target
   useEffect(() => {
     if (mapMode === '2d') {
-      const dist = camera.position.length();
-      camera.position.set(0.001, dist, 0.001);
-      camera.lookAt(0, 0, 0);
-      if (controlsRef.current) {
-        controlsRef.current.target.set(0, 0, 0);
-        controlsRef.current.update();
+      const controls = controlsRef.current;
+      const target = controls?.target ?? new THREE.Vector3();
+      const dist = camera.position.distanceTo(target);
+      // Flatten target to galactic plane
+      target.y = 0;
+      // Place camera directly above the orbit target on the Y axis
+      camera.position.set(target.x, Math.max(dist, 10), target.z);
+      camera.up.set(0, 0, -1); // Z-up for natural XZ panning
+      camera.lookAt(target.x, 0, target.z);
+      if (controls) {
+        controls.target.copy(target);
+        controls.update();
       }
+      flyActive.current = false;
+    } else {
+      // Restore default up vector when switching back to 3D
+      camera.up.set(0, 1, 0);
     }
   }, [mapMode, camera]);
 
   useFrame((_, delta) => {
     const controls = controlsRef.current;
+
+    // --- 2D mode: enforce camera locked straight down above target ---
+    if (mapMode === '2d' && controls) {
+      const target = controls.target;
+      // Keep target flat on the galactic plane
+      target.y = 0;
+      // Force camera directly above target (no tilt)
+      const camDist = camera.position.distanceTo(target);
+      camera.position.set(target.x, Math.max(camDist, 1), target.z);
+      camera.up.set(0, 0, -1); // Z-up so panning moves naturally on XZ plane
+      controls.update();
+    }
 
     // --- Fly-to animation (smooth camera transition to selected star) ---
     if (flyActive.current && controls) {
@@ -188,12 +210,13 @@ function CameraManager() {
       // @ts-expect-error ref typing
       ref={controlsRef}
       enableDamping dampingFactor={0.1}
-      rotateSpeed={1.2}
+      rotateSpeed={mapMode === '2d' ? 0 : 1.2}
+      enableRotate={mapMode !== '2d'}
       zoomSpeed={2.5} panSpeed={1.5}
       minDistance={0.2} maxDistance={60000}
-      // Prevent camera from flipping upside down
-      maxPolarAngle={Math.PI * 0.95}
-      minPolarAngle={Math.PI * 0.05}
+      // In 2D: lock polar angle to 0 (straight down); in 3D: allow near-full rotation
+      maxPolarAngle={mapMode === '2d' ? 0 : Math.PI * 0.95}
+      minPolarAngle={mapMode === '2d' ? 0 : Math.PI * 0.05}
       makeDefault
       mouseButtons={mapMode === '2d' ? mouseButtons2d : mouseButtons3d}
       touches={mapMode === '2d' ? touches2d : touches3d}
@@ -325,6 +348,68 @@ function TwoDDotsCanvas({
         (1 - (proj.y * 0.5 + 0.5)) * size.height,
       ];
     };
+
+    // ── Draw 10 ly grid ──
+    const CELL_PC = 10 * 0.30660; // 10 ly in parsecs (~3.066 pc)
+    // Determine visible extent by un-projecting screen corners
+    const topLeft = new THREE.Vector3(-1, 1, 0).unproject(camera);
+    const botRight = new THREE.Vector3(1, -1, 0).unproject(camera);
+    const minX = Math.floor(topLeft.x / CELL_PC) - 1;
+    const maxX = Math.ceil(botRight.x / CELL_PC) + 1;
+    const minZ = Math.floor(Math.min(topLeft.z, botRight.z) / CELL_PC) - 1;
+    const maxZ = Math.ceil(Math.max(topLeft.z, botRight.z) / CELL_PC) + 1;
+
+    // Clamp to a reasonable range to avoid drawing thousands of lines
+    const lo = -200, hi = 200;
+    const gMinX = Math.max(minX, lo), gMaxX = Math.min(maxX, hi);
+    const gMinZ = Math.max(minZ, lo), gMaxZ = Math.min(maxZ, hi);
+
+    ctx.strokeStyle = dark ? 'rgba(80, 70, 56, 0.35)' : 'rgba(160, 152, 136, 0.35)';
+    ctx.lineWidth = 0.5;
+    // Lines parallel to Z axis (varying X)
+    for (let i = gMinX; i <= gMaxX; i++) {
+      const wx = i * CELL_PC;
+      const [sx1, sy1] = project2D(wx, gMinZ * CELL_PC);
+      const [sx2, sy2] = project2D(wx, gMaxZ * CELL_PC);
+      ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+    }
+    // Lines parallel to X axis (varying Z)
+    for (let i = gMinZ; i <= gMaxZ; i++) {
+      const wz = i * CELL_PC;
+      const [sx1, sy1] = project2D(gMinX * CELL_PC, wz);
+      const [sx2, sy2] = project2D(gMaxX * CELL_PC, wz);
+      ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+    }
+
+    // ── Distance ring labels (circles at 10, 50, 100 ly from Sol) ──
+    const ringDistances = [
+      { ly: 10, label: '10 ly' },
+      { ly: 50, label: '50 ly' },
+      { ly: 100, label: '100 ly' },
+    ];
+    ctx.strokeStyle = dark ? 'rgba(160, 140, 100, 0.45)' : 'rgba(100, 88, 60, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
+    for (const ring of ringDistances) {
+      const rPc = ring.ly * 0.30660;
+      // Draw circle by projecting points around the ring
+      const segments = 64;
+      ctx.beginPath();
+      for (let j = 0; j <= segments; j++) {
+        const angle = (j / segments) * Math.PI * 2;
+        const rx = Math.cos(angle) * rPc;
+        const rz = Math.sin(angle) * rPc;
+        const [sx, sy] = project2D(rx, rz);
+        if (j === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+      // Label at the right side of the ring
+      const [lx, ly2] = project2D(rPc, 0);
+      ctx.font = 'bold 10px Georgia, serif';
+      ctx.fillStyle = dark ? 'rgba(180, 160, 120, 0.8)' : 'rgba(80, 68, 40, 0.8)';
+      ctx.fillText(ring.label, lx + 4, ly2 - 4);
+    }
+    ctx.setLineDash([]);
 
     // Draw constellation lines first (behind stars)
     if (showConstellations) {
