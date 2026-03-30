@@ -235,16 +235,39 @@ function SolarMarker() {
 }
 
 // ── Star labels ───────────────────────────────────────────
+// Distance-based culling: only render labels for stars near the camera.
+// Named stars always shown if within 500 pc of camera; HIP-only stars within 30 pc.
+// Max 200 labels at a time to keep DOM light.
 function StarLabels({ stars }: { stars: Star[] }) {
-  const { showLabels, scaleUnit, theme } = useStore();
+  const { showLabels, scaleUnit, theme, zoomTarget } = useStore();
   const dark = theme === 'dark';
   const txt  = dark ? '#e8e0d0' : '#1a1208';
   const sub  = dark ? '#9a8e7e' : '#5a4e3e';
   const shad = dark ? '#0a0806' : '#f0ece0';
-  if (!showLabels || stars.length === 0) return null;
+
+  // Cull radius scales with zoom — closer zoom = tighter label radius
+  const cullRadius = Math.max(5, zoomTarget * 0.6);
+  // Named stars get a larger radius
+  const namedRadius = Math.max(50, zoomTarget * 3);
+
+  const visible = useMemo(() => {
+    const result: Star[] = [];
+    for (const s of stars) {
+      const isNamedStar = s.name && !s.name.startsWith('HIP ');
+      const threshold = isNamedStar ? namedRadius : cullRadius;
+      // Simple distance check from origin (camera target approximation)
+      if (s.dist_pc <= threshold || s.dist_pc === 0) {
+        result.push(s);
+      }
+      if (result.length >= 200) break;
+    }
+    return result;
+  }, [stars, cullRadius, namedRadius]);
+
+  if (!showLabels || visible.length === 0) return null;
   return (
     <>
-      {stars.map(s => (
+      {visible.map(s => (
         <Html key={s.id} distanceFactor={10} position={[s.x+0.15, s.y+0.15, s.z]}
           style={{ zIndex:5, pointerEvents:'none' }} zIndexRange={[10,0]}>
           <div style={{ fontFamily:'Georgia,serif', fontWeight:'bold', color:txt,
