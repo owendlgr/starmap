@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useStore } from '@/lib/useStore';
-import { CONSTELLATION_PAIRS } from '@/lib/constellations';
+import { buildConstellationPairs } from '@/lib/constellations';
 import { formatDistance } from '@/lib/coordinates';
 import type { Star } from '@/lib/types';
 
@@ -126,7 +126,8 @@ export function FlatMap() {
       ctx.strokeStyle = dark ? 'rgba(212, 188, 122, 0.5)' : 'rgba(74, 62, 46, 0.4)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      for (const [h1, h2] of CONSTELLATION_PAIRS) {
+      const allPairs = buildConstellationPairs(stars);
+      for (const [h1, h2] of allPairs) {
         const a = hipMap.current.get(h1);
         const b = hipMap.current.get(h2);
         if (!a || !b) continue;

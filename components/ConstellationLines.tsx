@@ -3,7 +3,7 @@ import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import type { Star } from '@/lib/types';
 import { useStore } from '@/lib/useStore';
-import { CONSTELLATION_PAIRS } from '@/lib/constellations';
+import { buildConstellationPairs } from '@/lib/constellations';
 
 interface Props {
   stars: Star[];
@@ -17,7 +17,9 @@ export function ConstellationLines({ stars }: Props) {
   const { showConstellations, theme, flattenAmount } = useStore();
 
   const { geometry, lineCount } = useMemo(() => {
-    // Build HIP ID lookup map
+    // Build dynamic constellation pairs (curated + auto-connected)
+    const allPairs = buildConstellationPairs(stars);
+
     const hipMap = new Map<number, Star>();
     for (const s of stars) {
       if (s.hip) hipMap.set(s.hip, s);
@@ -26,7 +28,7 @@ export function ConstellationLines({ stars }: Props) {
     const pts: number[] = [];
     let count = 0;
 
-    for (const [h1, h2] of CONSTELLATION_PAIRS) {
+    for (const [h1, h2] of allPairs) {
       const a = hipMap.get(h1);
       const b = hipMap.get(h2);
       if (!a || !b) continue;
