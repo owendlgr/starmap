@@ -126,11 +126,17 @@ function CameraManager() {
     flyStartUp.current.copy(camera.up);
 
     if (mapMode === '2d') {
-      // Target: directly above the orbit target, looking straight down
-      const flatTarget = new THREE.Vector3(target.x, 0, target.z);
-      flyGoalPos.current.set(target.x, Math.max(dist, 10), target.z);
-      flyGoalTarget.current.copy(flatTarget);
-      flyGoalUp.current.set(0, 0, -1);
+      // Instant snap to top-down view — animation looks bad for this
+      camera.position.set(target.x, Math.max(dist, 10), target.z);
+      camera.up.set(0, 0, -1);
+      camera.lookAt(target.x, 0, target.z);
+      if (controls) {
+        controls.target.set(target.x, 0, target.z);
+        controls.update();
+      }
+      flyActive.current = false;
+      modeTransitionActive.current = false;
+      return; // skip the fly-to for 2D
     } else {
       // Target: 45-degree elevation from the orbit target
       const flatTarget = new THREE.Vector3(target.x, 0, target.z);
@@ -169,12 +175,11 @@ function CameraManager() {
     // Only enforce AFTER any mode-transition animation has completed
     if (mapMode === '2d' && controls && !flyActive.current) {
       const target = controls.target;
-      // Keep target flat on the galactic plane
       target.y = 0;
-      // Force camera directly above target (no tilt)
-      const camDist = camera.position.distanceTo(target);
-      camera.position.set(target.x, Math.max(camDist, 1), target.z);
-      camera.up.set(0, 0, -1); // Z-up so panning moves naturally on XZ plane
+      // Force camera directly above target on the Y axis
+      camera.position.set(target.x, Math.max(camera.position.y, 1), target.z);
+      camera.up.set(0, 0, -1);
+      camera.lookAt(target.x, 0, target.z);
       controls.update();
     }
 
