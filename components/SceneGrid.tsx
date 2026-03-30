@@ -89,9 +89,9 @@ export function SceneGrid() {
       {/* Darkened galactic plane at Y=0 */}
       <mesh geometry={planeGeo}>
         <meshBasicMaterial
-          color={dark ? '#0a0806' : '#c8c0b0'}
+          color={dark ? '#000000' : '#8a8070'}
           transparent
-          opacity={dark ? 0.3 : 0.2}
+          opacity={dark ? 0.55 : 0.4}
           side={THREE.DoubleSide}
           depthWrite={false}
         />

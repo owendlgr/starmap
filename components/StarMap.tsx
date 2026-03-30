@@ -209,30 +209,8 @@ function CameraManager() {
   );
 }
 
-// ── Sol marker ────────────────────────────────────────────
-function SolarMarker() {
-  const { theme } = useStore();
-  const dark = theme === 'dark';
-  const dot  = dark ? '#c8b898' : '#3d2e1e';
-  const txt  = dark ? '#e8e0d0' : '#1a1208';
-  const shad = dark ? '#0a0806' : '#f0ece0';
-  return (
-    <group position={[0,0,0]}>
-      <mesh>
-        <sphereGeometry args={[0.12, 12, 12]} />
-        <meshBasicMaterial color={dot} />
-      </mesh>
-      <Html distanceFactor={10} position={[0.2,0.2,0]}
-        style={{ zIndex:5, pointerEvents:'none' }} zIndexRange={[10,0]}>
-        <div style={{ fontFamily:'Georgia,serif', fontSize:'11px', fontWeight:'bold',
-          color:txt, whiteSpace:'nowrap', fontStyle:'italic', lineHeight:1.3,
-          textShadow:`0 0 6px ${shad}, 0 0 6px ${shad}` }}>
-          Sol · 0 ly
-        </div>
-      </Html>
-    </group>
-  );
-}
+// Sol is in the star catalog (id 0) and rendered by StarField like all other stars.
+// No special marker needed.
 
 // ── Star labels ───────────────────────────────────────────
 // Distance-based culling: only render labels for stars near the camera.
@@ -475,7 +453,6 @@ function Scene() {
       <CameraManager />
       <RaycasterScaler />
       <SceneGrid />
-      <SolarMarker />
       <StarField stars={stars} onSelect={setSelected} />
       <GaiaField />
       <ConstellationLines stars={stars} />
