@@ -7,15 +7,17 @@ const nextConfig = {
   // Optimize static file serving with long cache headers
   headers: async () => [
     {
-      source: '/data/:path*',
+      // Gaia binary chunks rarely change — long cache
+      source: '/data/gaia/:path*',
       headers: [
-        { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
       ],
     },
     {
-      source: '/data/gaia/:path*',
+      // Star catalog may be updated — short cache
+      source: '/data/:path((?!gaia).*)',
       headers: [
-        { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        { key: 'Cache-Control', value: 'public, max-age=3600, stale-while-revalidate=86400' },
       ],
     },
   ],

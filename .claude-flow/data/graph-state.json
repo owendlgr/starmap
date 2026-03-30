@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": 1774825864884,
+  "updatedAt": 1774827655004,
   "nodeCount": 14,
   "nodes": {
     "mem-MEMORY-memory-index": {
@@ -41,8 +41,8 @@
     "mem-project_terra-completed-as-of-2026-03-28--se": {
       "id": "mem-project_terra-completed-as-of-2026-03-28--se",
       "category": "project_terra",
-      "confidence": 0.5,
-      "accessCount": 0,
+      "confidence": 1,
+      "accessCount": 45,
       "createdAt": 1774806728931
     },
     "mem-project_terra-open---potential-next-items--n": {

@@ -1,15 +1,15 @@
 {
   "version": 1,
-  "computedAt": 1774825864884,
+  "computedAt": 1774827655005,
   "entries": [
     {
       "id": "mem-project_terra-completed-as-of-2026-03-28--se",
       "content": "- Email opt-out wired: `email_opt_out` column checked before sending in both `comments/route.ts` and `community/replies/[id]/route.ts`\n- `setImmediate` replaced with `after()` from `next/server` in both notification routes (Vercel-safe)\n- Comment DELETE: now returns 404 instead of silent 200 when comment not found/not owned\n- Community replies: added guard for `user` undefined when ADMIN_EMAIL has no DB row\n- `/api/translate`: now requires session auth (was fully open to unauthenticated requests",
       "summary": "Completed as of 2026-03-28 (session 2)",
       "category": "project_terra",
-      "confidence": 0.5,
+      "confidence": 0.9500000000000004,
       "pageRank": 0.37182883462676636,
-      "accessCount": 0,
+      "accessCount": 9,
       "words": [
         "email",
         "opt-out",
@@ -72,9 +72,9 @@
       "content": "- `src/middleware.ts`: security headers on all responses + auth gate on all `/api/*` (public exceptions listed) + page redirect for /write, /admin/*, /profile, /saved, /community. NOTE: Next.js 16 renamed middleware→proxy; default export works via backward compat.\n- Rate limiting (DB-backed via `rate_limits` table + `src/lib/rateLimit.ts`): login (10/15min), signup (3/hr), comments (20/hr), community posts (10/hr), community replies (30/hr)\n- Articles DB: `POST /api/articles` creates articles wi",
       "summary": "Completed as of 2026-03-28 (session 3)",
       "category": "project_terra",
-      "confidence": 0.5,
+      "confidence": 0.9500000000000004,
       "pageRank": 0.37182883462676636,
-      "accessCount": 0,
+      "accessCount": 9,
       "words": [
         "src",
         "middleware",
@@ -139,9 +139,9 @@
       "content": "- Membership paid tier: `src/lib/tiers.ts` (TIERS, isMember, getMemberBadge), /support tier cards, supporter badge on profile, early access gate via `public_at` column, /api/checkout uses STRIPE_PRICE_* env vars. New env vars needed: STRIPE_PRICE_SUPPORTER, STRIPE_PRICE_PATRON, STRIPE_PRICE_SUSTAINER\n- Writer follow system: FollowButton component, /api/follow/[email]/count endpoint, /api/articles/following feed, \"Following\" tab on /profile\n- Admin role check: checkAdmin() now checks DB role colu",
       "summary": "Completed as of 2026-03-28 (session 4)",
       "category": "project_terra",
-      "confidence": 0.5,
+      "confidence": 0.9500000000000004,
       "pageRank": 0.37182883462676636,
-      "accessCount": 0,
+      "accessCount": 9,
       "words": [
         "membership",
         "paid",
@@ -219,9 +219,9 @@
       "content": "- Weekly email digest: sendWeeklyDigest() in email.ts, /api/digest/articles, /api/digest/send (batched, test-send support), /admin/digest compose UI (article selector, editorial note, issue number, test/send)\n- Writer style guide: content/style-guide.md — voice, story standards, structure, language, ethics, submission process, rights & credit",
       "summary": "Completed as of 2026-03-28 (session 5)",
       "category": "project_terra",
-      "confidence": 0.5,
+      "confidence": 0.9500000000000004,
       "pageRank": 0.37182883462676636,
-      "accessCount": 0,
+      "accessCount": 9,
       "words": [
         "weekly",
         "email",
@@ -273,9 +273,9 @@
       "content": "- Globe zoom fixed: HomeMap.tsx now has scrollZoom/doubleClickZoom/touchZoomRotate/boxZoom/keyboard all disabled (was missing these flags despite Globe.tsx having them)\n- Nav: TopicNav removed from home page (was second navbar); Politics removed from NAV_CATEGORIES + TOPIC_CATEGORY (politics topics now map to 'world'); nav-inner made full-width (removed max-width/margin:auto constraint)\n- Security: /api/token disabled (was exposing GitHub PAT to all authenticated users); OAuth callback XSS fixed",
       "summary": "Completed as of 2026-03-28 (session 6)",
       "category": "project_terra",
-      "confidence": 0.5,
+      "confidence": 0.9500000000000004,
       "pageRank": 0.37182883462676636,
-      "accessCount": 0,
+      "accessCount": 9,
       "words": [
         "globe",
         "zoom",

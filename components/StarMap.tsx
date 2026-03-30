@@ -24,7 +24,7 @@ type ProjEntry = { sx: number; sy: number; star: Star };
 function DataLoader() {
   const { addStars } = useStore();
   useEffect(() => {
-    fetch('/data/stars_verified.json')
+    fetch('/data/stars_catalog.json')
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
