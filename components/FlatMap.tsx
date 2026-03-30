@@ -93,18 +93,19 @@ export function FlatMap() {
       ctx.strokeStyle = gridColor;
       ctx.lineWidth = 0.5;
 
-      // Grid anchored to Sol (0,0) — the origin in world coords
-      const originSx = cx + offset.x; // screen X of Sol
-      const originSy = cy + offset.y; // screen Y of Sol
+      // Sol is at screen position (cx + offset.x, cy + offset.y)
+      // Grid lines pass through Sol and repeat every cellPx
+      const solSx = cx + offset.x;
+      const solSy = cy + offset.y;
 
-      // Vertical lines (aligned to world X grid)
-      const startX = originSx - Math.ceil((originSx + cellPx) / cellPx) * cellPx;
-      for (let x = startX; x < w + cellPx; x += cellPx) {
+      // Vertical lines anchored to Sol
+      const firstVx = ((solSx % cellPx) + cellPx) % cellPx; // always positive
+      for (let x = firstVx; x < w; x += cellPx) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
       }
-      // Horizontal lines (aligned to world Z grid)
-      const startY = originSy - Math.ceil((originSy + cellPx) / cellPx) * cellPx;
-      for (let y = startY; y < h + cellPx; y += cellPx) {
+      // Horizontal lines anchored to Sol
+      const firstHy = ((solSy % cellPx) + cellPx) % cellPx;
+      for (let y = firstHy; y < h; y += cellPx) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
       }
     }
@@ -301,11 +302,13 @@ export function FlatMap() {
     }
   }, [mode, setSelected, setMeasureTarget]);
 
-  // Reset view when cameraResetTick changes (center button)
+  // Reset view when center button is pressed
+  const prevResetTick = useRef(cameraResetTick);
   useEffect(() => {
+    if (cameraResetTick === prevResetTick.current) return;
+    prevResetTick.current = cameraResetTick;
     setOffset({ x: 0, y: 0 });
     setScale(80);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraResetTick]);
 
   return (
