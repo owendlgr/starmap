@@ -25,12 +25,12 @@ export function FlatMap() {
 
   const dark = theme === 'dark';
 
-  // Build HIP lookup for constellations
-  const hipMap = useRef(new Map<number, Star>());
+  // Build ID lookup for constellations
+  const starIdMap = useRef(new Map<number, Star>());
   useEffect(() => {
     const m = new Map<number, Star>();
-    for (const s of stars) if (s.hip) m.set(s.hip, s);
-    hipMap.current = m;
+    for (const s of stars) m.set(s.id, s);
+    starIdMap.current = m;
   }, [stars]);
 
   // World coords (parsecs) → screen coords
@@ -127,9 +127,9 @@ export function FlatMap() {
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       const allPairs = buildConstellationPairs(stars);
-      for (const [h1, h2] of allPairs) {
-        const a = hipMap.current.get(h1);
-        const b = hipMap.current.get(h2);
+      for (const [id1, id2] of allPairs) {
+        const a = starIdMap.current.get(id1);
+        const b = starIdMap.current.get(id2);
         if (!a || !b) continue;
         const { sx: ax, sy: ay } = toScreen(a.x, a.z, canvas);
         const { sx: bx, sy: by } = toScreen(b.x, b.z, canvas);
@@ -182,7 +182,7 @@ export function FlatMap() {
       ctx.font = 'bold 9px Georgia, serif';
       ctx.fillStyle = dark ? 'rgba(232, 224, 208, 0.8)' : 'rgba(26, 18, 8, 0.75)';
       for (const { sx, sy, star } of visibleStars) {
-        if (!star.name || star.name.startsWith('HIP ')) continue;
+        if (!star.name) continue;
         ctx.fillText(star.name, sx + 6, sy - 4);
       }
     }
@@ -196,8 +196,26 @@ export function FlatMap() {
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY > 0 ? 0.9 : 1.1;
-    setScale(prev => Math.max(0.01, Math.min(500, prev * factor)));
-  }, []);
+    // Zoom toward cursor position
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    // Vector from center to cursor in screen space
+    const dx = mx - cx - offset.x;
+    const dy = my - cy - offset.y;
+    setScale(prev => {
+      const newScale = Math.max(0.01, Math.min(500, prev * factor));
+      const ratio = newScale / prev;
+      // Adjust offset so the point under cursor stays put
+      setOffset(o => ({
+        x: o.x - dx * (ratio - 1),
+        y: o.y - dy * (ratio - 1),
+      }));
+      return newScale;
+    });
+  }, [offset]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     dragging.current = true;

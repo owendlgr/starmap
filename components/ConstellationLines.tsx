@@ -17,20 +17,19 @@ export function ConstellationLines({ stars }: Props) {
   const { showConstellations, theme, flattenAmount } = useStore();
 
   const { geometry, lineCount } = useMemo(() => {
-    // Build dynamic constellation pairs (curated + auto-connected)
+    // Build constellation pairs by grouping stars by constellation name
     const allPairs = buildConstellationPairs(stars);
 
-    const hipMap = new Map<number, Star>();
-    for (const s of stars) {
-      if (s.hip) hipMap.set(s.hip, s);
-    }
+    // Build ID lookup
+    const idMap = new Map<number, Star>();
+    for (const s of stars) idMap.set(s.id, s);
 
     const pts: number[] = [];
     let count = 0;
 
-    for (const [h1, h2] of allPairs) {
-      const a = hipMap.get(h1);
-      const b = hipMap.get(h2);
+    for (const [id1, id2] of allPairs) {
+      const a = idMap.get(id1);
+      const b = idMap.get(id2);
       if (!a || !b) continue;
       const ay = a.y * (1 - flattenAmount);
       const by = b.y * (1 - flattenAmount);

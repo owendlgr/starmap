@@ -321,24 +321,10 @@ function StarLabels({ stars }: { stars: Star[] }) {
   const sub  = dark ? '#9a8e7e' : '#5a4e3e';
   const shad = dark ? '#0a0806' : '#f0ece0';
 
-  // Show labels based on zoom level — named stars always, HIP stars when zoomed in
+  // Show all star labels, cap at 500 for performance
   const visible = useMemo(() => {
-    const result: Star[] = [];
-    // Always show named stars (non-HIP-prefix names)
-    for (const s of stars) {
-      if (s.name && !s.name.startsWith('HIP ')) {
-        result.push(s);
-      }
-    }
-    // When zoomed in close (< 30 pc), also show nearby HIP stars up to a limit
-    if (zoomTarget < 30) {
-      const hipStars = stars
-        .filter(s => s.name?.startsWith('HIP ') && s.dist_pc < zoomTarget * 2)
-        .slice(0, 100);
-      result.push(...hipStars);
-    }
-    return result.slice(0, 300);
-  }, [stars, zoomTarget]);
+    return stars.filter(s => s.name).slice(0, 500);
+  }, [stars]);
 
   if (!showLabels || visible.length === 0) return null;
   return (
