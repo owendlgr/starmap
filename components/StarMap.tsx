@@ -64,6 +64,14 @@ function CameraManager() {
   const flyStartTarget  = useRef(new THREE.Vector3());
   const flyProgress     = useRef(0);
 
+  // Mode-transition animation state
+  const modeTransitionActive = useRef(false);
+  const modeTransitionTarget = useRef<'2d' | '3d'>('3d');
+  const flyGoalPos      = useRef(new THREE.Vector3());
+  const flyGoalTarget   = useRef(new THREE.Vector3());
+  const flyStartUp      = useRef(new THREE.Vector3(0, 1, 0));
+  const flyGoalUp       = useRef(new THREE.Vector3(0, 1, 0));
+
   useEffect(() => { camera.position.set(0, 8, 28); camera.lookAt(0, 0, 0); }, [camera]);
 
   // Reset camera
@@ -100,34 +108,64 @@ function CameraManager() {
     zoomLerpActive.current = false;
   }, [_cameraFlyTick, cameraFlyTarget, camera]);
 
-  // 2D: snap camera straight down above the current orbit target
+  // Animated 2D/3D mode transition using the fly-to system
+  const prevMapMode = useRef(mapMode);
   useEffect(() => {
+    if (mapMode === prevMapMode.current) return;
+    prevMapMode.current = mapMode;
+
+    const controls = controlsRef.current;
+    const target = controls?.target?.clone() ?? new THREE.Vector3();
+    const dist = camera.position.distanceTo(target);
+
+    // Capture current state as fly start
+    flyStartPos.current.copy(camera.position);
+    flyStartTarget.current.copy(target);
+    flyStartUp.current.copy(camera.up);
+
     if (mapMode === '2d') {
-      const controls = controlsRef.current;
-      const target = controls?.target ?? new THREE.Vector3();
-      const dist = camera.position.distanceTo(target);
-      // Flatten target to galactic plane
-      target.y = 0;
-      // Place camera directly above the orbit target on the Y axis
-      camera.position.set(target.x, Math.max(dist, 10), target.z);
-      camera.up.set(0, 0, -1); // Z-up for natural XZ panning
-      camera.lookAt(target.x, 0, target.z);
-      if (controls) {
-        controls.target.copy(target);
-        controls.update();
-      }
-      flyActive.current = false;
+      // Target: directly above the orbit target, looking straight down
+      const flatTarget = new THREE.Vector3(target.x, 0, target.z);
+      flyGoalPos.current.set(target.x, Math.max(dist, 10), target.z);
+      flyGoalTarget.current.copy(flatTarget);
+      flyGoalUp.current.set(0, 0, -1);
     } else {
-      // Restore default up vector when switching back to 3D
-      camera.up.set(0, 1, 0);
+      // Target: 45-degree elevation from the orbit target
+      const flatTarget = new THREE.Vector3(target.x, 0, target.z);
+      // Compute a horizontal offset direction from target toward camera, projected on XZ
+      const horiz = new THREE.Vector3(
+        camera.position.x - target.x,
+        0,
+        camera.position.z - target.z,
+      );
+      if (horiz.lengthSq() < 0.001) horiz.set(0, 0, 1);
+      horiz.normalize();
+      // 45 degrees: equal horizontal and vertical offset
+      const offsetDist = Math.max(dist, 10);
+      const elevComponent = Math.sin(Math.PI / 4) * offsetDist; // vertical
+      const horizComponent = Math.cos(Math.PI / 4) * offsetDist; // horizontal
+      flyGoalPos.current.set(
+        flatTarget.x + horiz.x * horizComponent,
+        elevComponent,
+        flatTarget.z + horiz.z * horizComponent,
+      );
+      flyGoalTarget.current.copy(flatTarget);
+      flyGoalUp.current.set(0, 1, 0);
     }
+
+    modeTransitionTarget.current = mapMode as '2d' | '3d';
+    modeTransitionActive.current = true;
+    flyProgress.current = 0;
+    flyActive.current = true;
+    zoomLerpActive.current = false;
   }, [mapMode, camera]);
 
   useFrame((_, delta) => {
     const controls = controlsRef.current;
 
     // --- 2D mode: enforce camera locked straight down above target ---
-    if (mapMode === '2d' && controls) {
+    // Only enforce AFTER any mode-transition animation has completed
+    if (mapMode === '2d' && controls && !flyActive.current) {
       const target = controls.target;
       // Keep target flat on the galactic plane
       target.y = 0;
@@ -136,6 +174,35 @@ function CameraManager() {
       camera.position.set(target.x, Math.max(camDist, 1), target.z);
       camera.up.set(0, 0, -1); // Z-up so panning moves naturally on XZ plane
       controls.update();
+    }
+
+    // --- Mode-transition fly animation (2D <-> 3D) ---
+    if (flyActive.current && modeTransitionActive.current && controls) {
+      // ~600ms transition: delta * 1.67 reaches 1.0 in ~0.6s
+      flyProgress.current = Math.min(1, flyProgress.current + delta * 1.67);
+      // Ease-in-out cubic for a smooth transition
+      const p = flyProgress.current;
+      const t = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+
+      // Lerp camera position, orbit target, and up vector
+      camera.position.lerpVectors(flyStartPos.current, flyGoalPos.current, t);
+      controls.target.lerpVectors(flyStartTarget.current, flyGoalTarget.current, t);
+      camera.up.copy(flyStartUp.current).lerp(flyGoalUp.current, t).normalize();
+      controls.update();
+
+      if (flyProgress.current >= 1) {
+        flyActive.current = false;
+        modeTransitionActive.current = false;
+        // Snap final state precisely
+        camera.position.copy(flyGoalPos.current);
+        controls.target.copy(flyGoalTarget.current);
+        camera.up.copy(flyGoalUp.current);
+        controls.update();
+        // Sync the zoom slider to the new distance
+        const newDist = camera.position.distanceTo(controls.target);
+        syncCameraZoom(newDist);
+      }
+      return; // skip other lerps while transitioning
     }
 
     // --- Fly-to animation (smooth camera transition to selected star) ---
@@ -526,6 +593,25 @@ function DeferredBloom() {
   );
 }
 
+// ── 3D hover tooltip ─────────────────────────────────────
+function HoverTooltip() {
+  const { hoveredStar, selectedStar } = useStore();
+  if (!hoveredStar || selectedStar) return null;
+  return (
+    <Html position={[hoveredStar.x, hoveredStar.y + 0.3, hoveredStar.z]}
+      distanceFactor={8} style={{ pointerEvents: 'none', zIndex: 20 }} zIndexRange={[20, 0]}>
+      <div style={{ background: 'var(--chrome-bg)', border: '1px solid var(--chrome-border)',
+        padding: '0.3rem 0.6rem', fontSize: '0.75rem', color: 'var(--chrome-text)',
+        fontFamily: 'var(--font-serif)', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+        {hoveredStar.name}
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--chrome-muted)', marginLeft: '0.4rem' }}>
+          mag {hoveredStar.mag.toFixed(1)}
+        </span>
+      </div>
+    </Html>
+  );
+}
+
 // ── 3D scene ──────────────────────────────────────────────
 function Scene() {
   const { stars, selectedStar, measureTarget, setSelected, theme } = useStore();
@@ -542,6 +628,7 @@ function Scene() {
       <GaiaField />
       <ConstellationLines stars={stars} />
       <StarLabels stars={stars} />
+      <HoverTooltip />
       {selectedStar && <SelectionMarker star={selectedStar} color="#c8a96a" />}
       {measureTarget && <SelectionMarker star={measureTarget} color="#6ab4c8" />}
       {selectedStar && measureTarget && <MeasureLine from={selectedStar} to={measureTarget} />}
@@ -571,8 +658,36 @@ function Scene2D({
 
 // ── Root export ───────────────────────────────────────────
 export function StarMap() {
-  const { theme, mapMode, setSelected, mode, setMeasureTarget } = useStore();
+  const { theme, mapMode, setSelected, mode, setMeasureTarget, setZoomTarget, triggerCameraReset } = useStore();
   const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
+
+  // Keyboard navigation: +/- zoom, Escape deselect, Home reset
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      switch (e.key) {
+        case '+':
+        case '=':
+          e.preventDefault();
+          setZoomTarget(useStore.getState().zoomTarget * 0.8);
+          break;
+        case '-':
+          e.preventDefault();
+          setZoomTarget(useStore.getState().zoomTarget * 1.2);
+          break;
+        case 'Escape':
+          setSelected(null);
+          break;
+        case 'Home':
+          e.preventDefault();
+          triggerCameraReset();
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [setZoomTarget, setSelected, triggerCameraReset]);
 
   // Shared ref: TwoDDotsCanvas (inside Canvas) writes projected positions each frame.
   const projRef = useRef<ProjEntry[]>([]);

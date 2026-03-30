@@ -65,6 +65,14 @@ interface StoreState {
   // Map mode: 3D orbit or 2D bird's-eye top-down
   mapMode: '3d' | '2d';
   setMapMode: (m: '3d' | '2d') => void;
+
+  // Magnitude limit filter
+  magLimit: number;
+  setMagLimit: (v: number) => void;
+
+  // Hover tooltip (3D mode)
+  hoveredStar: Star | null;
+  setHoveredStar: (star: Star | null) => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -141,4 +149,10 @@ export const useStore = create<StoreState>((set) => ({
 
   mapMode: '3d',
   setMapMode: (m) => set({ mapMode: m }),
+
+  magLimit: 12,
+  setMagLimit: (v) => set({ magLimit: v }),
+
+  hoveredStar: null,
+  setHoveredStar: (star) => set({ hoveredStar: star }),
 }));

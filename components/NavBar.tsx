@@ -210,6 +210,7 @@ export function NavBar() {
     triggerCameraReset,
     theme, setTheme,
     mapMode, setMapMode,
+    magLimit, setMagLimit,
   } = useStore();
 
   const [extraFiles, setExtraFiles] = useState<string[]>([]);
@@ -277,6 +278,12 @@ export function NavBar() {
           >
             {mapMode === '2d' ? '3D' : '2D'}
           </button>
+          <span className="navbar-label">Mag</span>
+          <input type="range" min={1} max={12} step={0.5} value={magLimit}
+            onChange={e => setMagLimit(parseFloat(e.target.value))}
+            style={{ width: '60px', accentColor: 'var(--chrome-accent)' }}
+            title={`Magnitude limit: ${magLimit}`}
+          />
         </div>
 
         <div className="navbar-sep" />

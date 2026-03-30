@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useCallback, useEffect } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Star } from '@/lib/types';
 import { useStore } from '@/lib/useStore';
@@ -36,8 +36,17 @@ attribute vec3  aStarColor;
 varying float vAlpha;
 varying vec3  vColor;
 uniform float uPixelRatio;
+uniform float uTime;
+uniform float uMagLimit;
 
 void main() {
+  if (aMag > uMagLimit) {
+    gl_PointSize = 0.0;
+    vAlpha = 0.0;
+    vColor = vec3(0.0);
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    return;
+  }
   vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
   float camDist = length(mvPos.xyz);
 
@@ -49,6 +58,9 @@ void main() {
   float distAtten = clamp(300.0 / camDist, 0.15, 5.0);
   float scaled = basePx * distAtten;
   gl_PointSize = clamp(scaled, 1.5, 28.0);
+
+  // Subtle twinkle effect
+  gl_PointSize *= 1.0 + 0.04 * sin(uTime * 2.5 + float(gl_VertexID) * 13.7);
 
   // Alpha: bright stars stay opaque, dim stars fade at distance
   float magAlpha = clamp(magFactor * 1.2, 0.3, 1.0);
@@ -89,7 +101,7 @@ interface Props {
 
 export function StarField({ stars, onSelect }: Props) {
   const { gl } = useThree();
-  const { mode, setMeasureTarget, showHipparcos, theme } = useStore();
+  const { mode, setMeasureTarget, showHipparcos, theme, magLimit, setHoveredStar } = useStore();
   const pointsRef = useRef<THREE.Points>(null);
   const prevGeoRef = useRef<THREE.BufferGeometry | null>(null);
 
@@ -137,6 +149,8 @@ export function StarField({ stars, onSelect }: Props) {
       fragmentShader: FRAG,
       uniforms: {
         uPixelRatio: { value: gl.getPixelRatio() },
+        uTime: { value: 0.0 },
+        uMagLimit: { value: 12.0 },
       },
       transparent: true,
       depthWrite: false,
@@ -145,20 +159,40 @@ export function StarField({ stars, onSelect }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl]);
 
-  // Set star colors: black dots on light mode, white dots on dark mode
+  // Blend spectral colors with theme base color
   useEffect(() => {
     const dark = theme === 'dark';
     if (!geometry.attributes.aStarColor) return;
     const colors = geometry.attributes.aStarColor as THREE.BufferAttribute;
-    const [r, g, b] = dark ? [0.92, 0.88, 0.82] : [0.08, 0.06, 0.04];
+    const blendFactor = 0.3; // 30% theme base, 70% spectral
     for (let i = 0; i < filtered.length; i++) {
-      colors.setXYZ(i, r, g, b);
+      const s = filtered[i];
+      const [sr, sg, sb] = spectralToColor(s.spectral, s.bv);
+      let fr: number, fg: number, fb: number;
+      if (dark) {
+        // Dark mode: mix(spectral, warmWhite, 0.3) — 70% spectral, 30% warm white
+        fr = sr * (1 - blendFactor) + 0.92 * blendFactor;
+        fg = sg * (1 - blendFactor) + 0.88 * blendFactor;
+        fb = sb * (1 - blendFactor) + 0.82 * blendFactor;
+      } else {
+        // Light mode: mix(spectral * 0.15, darkBrown, 0.3) — darkened spectral tones
+        fr = (sr * 0.15) * (1 - blendFactor) + 0.08 * blendFactor;
+        fg = (sg * 0.15) * (1 - blendFactor) + 0.06 * blendFactor;
+        fb = (sb * 0.15) * (1 - blendFactor) + 0.04 * blendFactor;
+      }
+      colors.setXYZ(i, fr, fg, fb);
     }
     colors.needsUpdate = true;
     // Also switch blending mode: additive for dark (glow), normal for light (solid)
     material.blending = dark ? THREE.AdditiveBlending : THREE.NormalBlending;
     material.needsUpdate = true;
   }, [theme, geometry, filtered, material]);
+
+  // Update twinkle time and magnitude limit uniforms each frame
+  useFrame(() => {
+    material.uniforms.uTime.value = performance.now() / 1000.0;
+    material.uniforms.uMagLimit.value = magLimit;
+  });
 
   const handleClick = useCallback((e: THREE.Event) => {
     const ev = e as unknown as { intersections: { index: number }[] };
@@ -170,5 +204,17 @@ export function StarField({ stars, onSelect }: Props) {
     if (mode === 'measure') setMeasureTarget(star); else onSelect(star);
   }, [idMap, mode, onSelect, setMeasureTarget]);
 
-  return <points ref={pointsRef} geometry={geometry} material={material} onClick={handleClick} frustumCulled />;
+  const handlePointerOver = useCallback((e: THREE.Event) => {
+    const ev = e as unknown as { intersections: { index: number }[] };
+    if (!ev.intersections?.length) return;
+    const idx = ev.intersections[0].index;
+    const star = idMap.get(idx);
+    if (star) setHoveredStar(star);
+  }, [idMap, setHoveredStar]);
+
+  const handlePointerOut = useCallback(() => {
+    setHoveredStar(null);
+  }, [setHoveredStar]);
+
+  return <points ref={pointsRef} geometry={geometry} material={material} onClick={handleClick} onPointerOver={handlePointerOver} onPointerOut={handlePointerOut} frustumCulled />;
 }
