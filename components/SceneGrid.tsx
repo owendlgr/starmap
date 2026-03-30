@@ -1,95 +1,119 @@
 'use client';
 import { useMemo } from 'react';
-import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useStore } from '@/lib/useStore';
 
-const RING_RADII = [1, 5, 10, 50, 100, 500, 1000, 5000, 10000];
-const RING_SEGS = 128;
+// 1 light year = 0.30660 parsecs
+const LY = 0.30660;
 
-const LABELED_RINGS = [
-  { r: 10, label: '10 pc' },
-  { r: 100, label: '100 pc' },
-  { r: 1000, label: '1 kpc' },
-  { r: 10000, label: '10 kpc' },
-];
+// Build a 10×10×10 ly grid centered on origin, in all 3 dimensions
+// Each cell is 1 ly. Grid extends from -5 ly to +5 ly on each axis.
+function buildGrid3D(): Float32Array {
+  const pts: number[] = [];
+  const HALF = 5; // ±5 ly from origin
+  const STEP = 1; // 1 ly per grid line
+
+  // Lines parallel to X axis (vary Y and Z)
+  for (let y = -HALF; y <= HALF; y += STEP) {
+    for (let z = -HALF; z <= HALF; z += STEP) {
+      pts.push(-HALF * LY, y * LY, z * LY, HALF * LY, y * LY, z * LY);
+    }
+  }
+  // Lines parallel to Y axis (vary X and Z)
+  for (let x = -HALF; x <= HALF; x += STEP) {
+    for (let z = -HALF; z <= HALF; z += STEP) {
+      pts.push(x * LY, -HALF * LY, z * LY, x * LY, HALF * LY, z * LY);
+    }
+  }
+  // Lines parallel to Z axis (vary X and Y)
+  for (let x = -HALF; x <= HALF; x += STEP) {
+    for (let y = -HALF; y <= HALF; y += STEP) {
+      pts.push(x * LY, y * LY, -HALF * LY, x * LY, y * LY, HALF * LY);
+    }
+  }
+
+  return new Float32Array(pts);
+}
+
+// Build the Y=0 galactic plane as a visible quad
+function buildGalacticPlane(): Float32Array {
+  const S = 200; // 200 pc extent
+  // Two triangles forming a quad on the XZ plane at Y=0
+  return new Float32Array([
+    -S, 0, -S,  S, 0, -S,  S, 0, S,
+    -S, 0, -S,  S, 0, S,  -S, 0, S,
+  ]);
+}
+
+// Extended axis lines beyond the grid
+function buildAxes(): Float32Array {
+  const L = 500; // parsecs
+  return new Float32Array([
+    // X axis (red-ish direction)
+    -L, 0, 0, L, 0, 0,
+    // Y axis (vertical / up)
+    0, -L, 0, 0, L, 0,
+    // Z axis
+    0, 0, -L, 0, 0, L,
+  ]);
+}
 
 export function SceneGrid() {
   const { theme } = useStore();
   const dark = theme === 'dark';
 
-  // Build all geometry as a single lineSegments buffer for reliability
-  const geometry = useMemo(() => {
-    const pts: number[] = [];
+  const grid3D = useMemo(() => buildGrid3D(), []);
+  const plane = useMemo(() => buildGalacticPlane(), []);
+  const axes = useMemo(() => buildAxes(), []);
 
-    // Distance rings
-    for (const r of RING_RADII) {
-      for (let i = 0; i < RING_SEGS; i++) {
-        const a0 = (i / RING_SEGS) * Math.PI * 2;
-        const a1 = ((i + 1) / RING_SEGS) * Math.PI * 2;
-        pts.push(Math.cos(a0) * r, 0, Math.sin(a0) * r);
-        pts.push(Math.cos(a1) * r, 0, Math.sin(a1) * r);
-      }
-    }
-
-    // Grid cross-hatch lines on galactic plane
-    const gridSteps = [-1000, -500, -100, -50, -10, -5, 5, 10, 50, 100, 500, 1000];
-    for (const v of gridSteps) {
-      const len = Math.abs(v);
-      // Lines parallel to Z axis
-      pts.push(v, 0, -len, v, 0, len);
-      // Lines parallel to X axis
-      pts.push(-len, 0, v, len, 0, v);
-    }
-
-    // Main axes (through origin, full length)
-    const AXIS_LEN = 15000;
-    pts.push(-AXIS_LEN, 0, 0, AXIS_LEN, 0, 0); // X axis
-    pts.push(0, 0, -AXIS_LEN, 0, 0, AXIS_LEN); // Z axis
-
-    // Vertical "up" indicator
-    pts.push(0, 0, 0, 0, 8, 0);
-
+  const gridGeo = useMemo(() => {
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
+    geo.setAttribute('position', new THREE.BufferAttribute(grid3D, 3));
     return geo;
-  }, []);
+  }, [grid3D]);
 
-  const color = dark ? '#5a4e3e' : '#8a7e6e';
-  const labelColor = dark ? '#7a6e5e' : '#6a5e4e';
+  const planeGeo = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(plane, 3));
+    return geo;
+  }, [plane]);
+
+  const axesGeo = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(axes, 3));
+    return geo;
+  }, [axes]);
 
   return (
     <group>
-      <lineSegments geometry={geometry}>
-        <lineBasicMaterial color={color} transparent opacity={0.5} />
+      {/* 10×10×10 ly 3D grid */}
+      <lineSegments geometry={gridGeo}>
+        <lineBasicMaterial
+          color={dark ? '#6a5e4e' : '#7a6e5e'}
+          transparent
+          opacity={0.6}
+        />
       </lineSegments>
 
-      {/* Distance labels */}
-      {LABELED_RINGS.map(({ r, label }) => (
-        <Html
-          key={r}
-          position={[r * 0.71, 0.3, r * 0.71]}
-          distanceFactor={Math.max(10, r * 0.3)}
-          style={{ pointerEvents: 'none', zIndex: 2 }}
-          zIndexRange={[5, 0]}
-        >
-          <div style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '10px',
-            fontWeight: 'bold',
-            color: labelColor,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            whiteSpace: 'nowrap',
-            opacity: 0.9,
-            textShadow: dark
-              ? '0 0 6px #0a0806, 0 0 6px #0a0806'
-              : '0 0 6px #f0ece0, 0 0 6px #f0ece0',
-          }}>
-            {label}
-          </div>
-        </Html>
-      ))}
+      {/* Darkened Y=0 galactic plane */}
+      <mesh geometry={planeGeo}>
+        <meshBasicMaterial
+          color={dark ? '#0a0806' : '#d8d0c0'}
+          transparent
+          opacity={dark ? 0.35 : 0.25}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Axis lines extending beyond grid */}
+      <lineSegments geometry={axesGeo}>
+        <lineBasicMaterial
+          color={dark ? '#9a8e7e' : '#5a4e3e'}
+          transparent
+          opacity={0.8}
+        />
+      </lineSegments>
     </group>
   );
 }

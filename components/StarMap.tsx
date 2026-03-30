@@ -187,9 +187,9 @@ function CameraManager() {
     <OrbitControls
       // @ts-expect-error ref typing
       ref={controlsRef}
-      enableDamping dampingFactor={0.12}
-      rotateSpeed={0.45}
-      zoomSpeed={0.8} panSpeed={0.6}
+      enableDamping dampingFactor={0.1}
+      rotateSpeed={1.2}
+      zoomSpeed={2.5} panSpeed={1.5}
       minDistance={0.2} maxDistance={60000}
       // Prevent camera from flipping upside down
       maxPolarAngle={Math.PI * 0.95}
@@ -237,22 +237,21 @@ function SolarMarker() {
 // ── Star labels ───────────────────────────────────────────
 function StarLabels({ stars }: { stars: Star[] }) {
   const { showLabels, scaleUnit, theme } = useStore();
-  const named = useMemo(() => stars.filter(isNamed), [stars]);
   const dark = theme === 'dark';
   const txt  = dark ? '#e8e0d0' : '#1a1208';
   const sub  = dark ? '#9a8e7e' : '#5a4e3e';
   const shad = dark ? '#0a0806' : '#f0ece0';
-  if (!showLabels || named.length === 0) return null;
+  if (!showLabels || stars.length === 0) return null;
   return (
     <>
-      {named.map(s => (
-        <Html key={s.id} distanceFactor={10} position={[s.x+0.2, s.y+0.2, s.z]}
+      {stars.map(s => (
+        <Html key={s.id} distanceFactor={10} position={[s.x+0.15, s.y+0.15, s.z]}
           style={{ zIndex:5, pointerEvents:'none' }} zIndexRange={[10,0]}>
           <div style={{ fontFamily:'Georgia,serif', fontWeight:'bold', color:txt,
-            whiteSpace:'nowrap', lineHeight:1.35, pointerEvents:'none',
+            whiteSpace:'nowrap', lineHeight:1.3, pointerEvents:'none',
             textShadow:`0 0 6px ${shad}, 0 0 6px ${shad}, 0 0 8px ${shad}` }}>
-            <span style={{ display:'block', fontSize:'10px' }}>{s.name}</span>
-            <span style={{ display:'block', fontSize:'9px', color:sub }}>
+            <span style={{ display:'block', fontSize:'9px' }}>{s.name}</span>
+            <span style={{ display:'block', fontSize:'8px', color:sub }}>
               {s.dist_pc>0 ? formatDistance(s.dist_pc, scaleUnit) : 'here'}
             </span>
           </div>
@@ -263,12 +262,13 @@ function StarLabels({ stars }: { stars: Star[] }) {
 }
 
 // ── Depth lines ───────────────────────────────────────────
+// Vertical lines from every star down to the Y=0 galactic plane
 function DepthLines({ stars }: { stars: Star[] }) {
   const { showDepthLines, theme } = useStore();
   const geometry = useMemo(() => {
     const pts: number[] = [];
-    for (const s of stars.filter(s => isNamed(s) || s.mag < 3.5)) {
-      if (Math.abs(s.y) < 0.05) continue;
+    for (const s of stars) {
+      if (Math.abs(s.y) < 0.02) continue; // skip stars already on the plane
       pts.push(s.x, s.y, s.z, s.x, 0, s.z);
     }
     const geo = new THREE.BufferGeometry();
@@ -276,10 +276,10 @@ function DepthLines({ stars }: { stars: Star[] }) {
     return geo;
   }, [stars]);
   if (!showDepthLines) return null;
-  const col = theme === 'dark' ? '#9a8e7e' : '#8a7e6e';
+  const col = theme === 'dark' ? '#b0a48e' : '#5a4e3e';
   return (
     <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={col} transparent opacity={0.5} />
+      <lineBasicMaterial color={col} transparent opacity={0.7} />
     </lineSegments>
   );
 }
