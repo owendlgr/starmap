@@ -87,13 +87,15 @@ export function ConstellationLines({ stars }: Props) {
   }, [hipMap]);
 
   const material = useMemo(() => new THREE.LineBasicMaterial({
-    color: theme === 'dark' ? '#7a6e5e' : '#8a7e6e',
+    color: theme === 'dark' ? '#c8a96a' : '#5a4e3e',
     transparent: true,
-    opacity: 0.55,
+    opacity: 0.7,
+    linewidth: 1,
   }), [theme]);
 
   useEffect(() => {
-    material.color.set(theme === 'dark' ? '#7a6e5e' : '#8a7e6e');
+    material.color.set(theme === 'dark' ? '#c8a96a' : '#5a4e3e');
+    material.opacity = 0.7;
   }, [theme, material]);
 
   // Dispose geometry and material on unmount

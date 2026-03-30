@@ -92,7 +92,7 @@ export const useStore = create<StoreState>((set) => ({
   showHipparcos: true,
   showExoplanets: true,
   showGaia: true,
-  showConstellations: false,
+  showConstellations: true,
   setShowHipparcos: (v) => set({ showHipparcos: v }),
   setShowExoplanets: (v) => set({ showExoplanets: v }),
   setShowGaia: (v) => set({ showGaia: v }),

@@ -295,7 +295,7 @@ function DepthLines({ stars }: { stars: Star[] }) {
     return geo;
   }, [stars]);
   if (!showDepthLines) return null;
-  const col = theme === 'dark' ? '#504840' : '#b0a898';
+  const col = theme === 'dark' ? '#8a7e6e' : '#b0a898';
   return (
     <lineSegments geometry={geometry}>
       <lineBasicMaterial color={col} transparent opacity={0.35} />
@@ -379,7 +379,7 @@ function RaycasterScaler() {
   useFrame(() => {
     const dist = camera.position.length();
     (raycaster.params as { Points?: { threshold: number } }).Points = {
-      threshold: Math.max(0.08, dist * 0.004),
+      threshold: Math.max(0.3, dist * 0.012),
     };
   });
   return null;
@@ -425,8 +425,8 @@ function Scene({ exoHosts }: { exoHosts: Star[] }) {
       <ConstellationLines stars={stars} />
       <StarLabels stars={stars} />
       <DepthLines stars={stars} />
-      {selectedStar && <SelectionMarker star={selectedStar} color="#5a3e1e" />}
-      {measureTarget && <SelectionMarker star={measureTarget} color="#2e5a6e" />}
+      {selectedStar && <SelectionMarker star={selectedStar} color="#c8a96a" />}
+      {measureTarget && <SelectionMarker star={measureTarget} color="#6ab4c8" />}
       {selectedStar && measureTarget && <MeasureLine from={selectedStar} to={measureTarget} />}
       {/* Subtle bloom for bright star glow — deferred to avoid blocking initial render */}
       {dark && <DeferredBloom />}
