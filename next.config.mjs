@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
-  transpilePackages: ['three'],
+  transpilePackages: ['three', 'mapbox-gl'],
   // Enable gzip/brotli compression for static assets
   compress: true,
   // Optimize static file serving with long cache headers
@@ -28,6 +28,13 @@ const nextConfig = {
       source: '/data/:path((?!gaia).*)',
       headers: [
         { key: 'Cache-Control', value: 'public, max-age=3600, stale-while-revalidate=86400' },
+      ],
+    },
+    {
+      // Planet textures rarely change — long cache
+      source: '/textures/:path*',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=2592000' },
       ],
     },
   ],

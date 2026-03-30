@@ -9,7 +9,9 @@
     "lint": "next lint",
     "generate-data": "python3 scripts/generate-catalog.py",
     "fetch-gaia": "python3 scripts/fetch-gaia.py",
-    "fetch-gaia:dry": "python3 scripts/fetch-gaia.py --dry-run"
+    "fetch-gaia:dry": "python3 scripts/fetch-gaia.py --dry-run",
+    "fetch-missions": "python3 scripts/fetch_missions.py",
+    "fetch-galaxies": "python3 scripts/fetch_nearby_galaxies.py"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.0",
