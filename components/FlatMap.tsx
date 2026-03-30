@@ -14,7 +14,8 @@ import type { Star } from '@/lib/types';
 export function FlatMap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { stars, theme, scaleUnit, showConstellations, showLabels, magLimit,
-    selectedStar, setSelected, mode, setMeasureTarget } = useStore();
+    selectedStar, setSelected, mode, setMeasureTarget, measureTarget,
+    showHipparcos, cameraResetTick } = useStore();
 
   // Pan/zoom state
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -92,14 +93,18 @@ export function FlatMap() {
       ctx.strokeStyle = gridColor;
       ctx.lineWidth = 0.5;
 
-      // Vertical lines
-      const startX = ((cx + offset.x) % cellPx) - cellPx;
-      for (let x = startX; x < w; x += cellPx) {
+      // Grid anchored to Sol (0,0) — the origin in world coords
+      const originSx = cx + offset.x; // screen X of Sol
+      const originSy = cy + offset.y; // screen Y of Sol
+
+      // Vertical lines (aligned to world X grid)
+      const startX = originSx - Math.ceil((originSx + cellPx) / cellPx) * cellPx;
+      for (let x = startX; x < w + cellPx; x += cellPx) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
       }
-      // Horizontal lines
-      const startY = ((cy + offset.y) % cellPx) - cellPx;
-      for (let y = startY; y < h; y += cellPx) {
+      // Horizontal lines (aligned to world Z grid)
+      const startY = originSy - Math.ceil((originSy + cellPx) / cellPx) * cellPx;
+      for (let y = startY; y < h + cellPx; y += cellPx) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
       }
     }
@@ -150,7 +155,9 @@ export function FlatMap() {
     const selectedColor = '#c8a96a';
     const visibleStars: { sx: number; sy: number; star: Star }[] = [];
 
-    for (const s of stars) {
+    // Filter stars by layers and magnitude
+    const filteredStars = showHipparcos ? stars : [];
+    for (const s of filteredStars) {
       if (s.mag > magLimit) continue;
       const { sx, sy } = toScreen(s.x, s.z, canvas);
       if (sx < -20 || sx > w + 20 || sy < -20 || sy > h + 20) continue;
@@ -171,6 +178,26 @@ export function FlatMap() {
         ctx.arc(sx, sy, r + 5, 0, Math.PI * 2);
         ctx.stroke();
       }
+    }
+
+    // ── Measure line ──
+    if (selectedStar && measureTarget) {
+      const { sx: sx1, sy: sy1 } = toScreen(selectedStar.x, selectedStar.z, canvas);
+      const { sx: sx2, sy: sy2 } = toScreen(measureTarget.x, measureTarget.z, canvas);
+      ctx.strokeStyle = '#c8a96a';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(sx1, sy1);
+      ctx.lineTo(sx2, sy2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Measure target ring
+      ctx.strokeStyle = '#6ab4c8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx2, sy2, 8, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     // ── Sol marker ──
@@ -196,7 +223,7 @@ export function FlatMap() {
     // ── Store visible stars for click detection ──
     (canvasRef as unknown as { _visibleStars: typeof visibleStars })._visibleStars = visibleStars;
 
-  }, [stars, dark, scale, offset, showConstellations, showLabels, magLimit, selectedStar, toScreen]);
+  }, [stars, dark, scale, offset, showConstellations, showLabels, magLimit, selectedStar, measureTarget, showHipparcos, toScreen]);
 
   // ── Mouse handlers ──
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -274,36 +301,12 @@ export function FlatMap() {
     }
   }, [mode, setSelected, setMeasureTarget]);
 
-  // ── Selected star info ──
-  const info = selectedStar ? (
-    <div style={{
-      position: 'absolute', top: '1rem', right: '1rem', zIndex: 20,
-      background: dark ? 'rgba(240,236,224,0.95)' : 'rgba(20,16,10,0.95)',
-      color: dark ? '#1a1208' : '#f0e8d8',
-      padding: '1rem', maxWidth: '280px',
-      border: `1px solid ${dark ? 'rgba(26,18,8,0.2)' : 'rgba(200,180,140,0.3)'}`,
-      fontFamily: 'Georgia, serif', fontSize: '0.85rem',
-    }}>
-      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.3rem' }}>{selectedStar.name}</div>
-      <div style={{ fontSize: '0.7rem', fontFamily: "'Courier New', monospace", color: dark ? '#5a4e3e' : '#b0a48e', marginBottom: '0.5rem' }}>
-        {selectedStar.type} · {selectedStar.spectral}
-      </div>
-      <div style={{ fontSize: '0.8rem', lineHeight: 1.6 }}>
-        <div>Distance: {formatDistance(selectedStar.dist_pc, scaleUnit)}</div>
-        <div>Magnitude: {selectedStar.mag.toFixed(2)}</div>
-        <div>RA: {selectedStar.ra.toFixed(4)}° · Dec: {selectedStar.dec.toFixed(4)}°</div>
-        {selectedStar.hip > 0 && <div>HIP {selectedStar.hip}</div>}
-      </div>
-      <button
-        onClick={() => setSelected(null)}
-        style={{ marginTop: '0.5rem', background: 'none', border: '1px solid currentColor',
-          padding: '0.3rem 0.6rem', cursor: 'pointer', color: 'inherit',
-          fontFamily: "'Courier New', monospace", fontSize: '0.65rem', letterSpacing: '0.08em' }}
-      >
-        CLOSE
-      </button>
-    </div>
-  ) : null;
+  // Reset view when cameraResetTick changes (center button)
+  useEffect(() => {
+    setOffset({ x: 0, y: 0 });
+    setScale(80);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraResetTick]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', cursor: hoveredStar ? 'pointer' : dragging.current ? 'grabbing' : 'grab' }}>
@@ -317,8 +320,6 @@ export function FlatMap() {
         onClick={handleClick}
         style={{ width: '100%', height: '100%', display: 'block' }}
       />
-      {info}
-
       {/* Hover tooltip */}
       {hoveredStar && !selectedStar && (
         <div style={{
