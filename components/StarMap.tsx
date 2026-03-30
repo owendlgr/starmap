@@ -2,6 +2,7 @@
 import { useEffect, Suspense, useRef, useMemo, useState, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { StarField } from './StarField';
 import { ExoplanetHostField } from './ExoplanetHostField';
@@ -19,6 +20,8 @@ const isNamed = (s: Star) => s.name && !s.name.startsWith('HIP ');
 type ProjEntry = { sx: number; sy: number; star: Star };
 
 // ── Data loaders ──────────────────────────────────────────
+// Priority 1: Load main stars immediately (tiny ~18KB)
+// Priority 2: Defer exoplanet hosts until after main stars render
 function DataLoader() {
   const { addStars } = useStore();
   useEffect(() => {
@@ -31,44 +34,90 @@ function DataLoader() {
 }
 
 function ExoplanetLoader({ onLoad }: { onLoad: (stars: Star[]) => void }) {
-  const { setExoHostCount } = useStore();
+  const { setExoHostCount, stars } = useStore();
+  const loadedRef = useRef(false);
+  // Defer exoplanet loading until main stars have loaded to avoid bandwidth contention
   useEffect(() => {
-    fetch('/api/exoplanet-stars')
-      .then(r => r.json())
-      .then((d: { stars: Star[] }) => {
-        if (d.stars?.length) { onLoad(d.stars); setExoHostCount(d.stars.length); }
-      })
-      .catch(() => {});
+    if (loadedRef.current || stars.length === 0) return;
+    loadedRef.current = true;
+    const load = () => {
+      fetch('/api/exoplanet-stars')
+        .then(r => r.json())
+        .then((d: { stars: Star[] }) => {
+          if (d.stars?.length) { onLoad(d.stars); setExoHostCount(d.stars.length); }
+        })
+        .catch(() => {});
+    };
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(load, { timeout: 2000 });
+    } else {
+      setTimeout(load, 100);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [stars.length]);
   return null;
 }
 
 // ── Camera ────────────────────────────────────────────────
 function CameraManager() {
   const { camera } = useThree();
-  const controlsRef = useRef<{ target: THREE.Vector3; object: THREE.Camera; update: () => void } | null>(null);
-  const { cameraResetTick, zoomTarget, _zoomLerpTick, setZoomTarget, syncCameraZoom, mapMode } = useStore();
-  const lastResetTick = useRef(0);
-  const lerpActive   = useRef(false);
-  const prevLerpTick = useRef(0);
-  const lastSyncMs   = useRef(0);
+  const controlsRef = useRef<{
+    target: THREE.Vector3;
+    object: THREE.Camera;
+    update: () => void;
+  } | null>(null);
+  const {
+    cameraResetTick, zoomTarget, _zoomLerpTick, setZoomTarget, syncCameraZoom, mapMode,
+    cameraFlyTarget, _cameraFlyTick,
+  } = useStore();
+  const lastResetTick  = useRef(0);
+  const zoomLerpActive = useRef(false);
+  const prevLerpTick   = useRef(0);
+  const lastSyncMs     = useRef(0);
+
+  // Fly-to animation state
+  const flyActive       = useRef(false);
+  const prevFlyTick     = useRef(0);
+  const flyTargetVec    = useRef(new THREE.Vector3());
+  const flyStartPos     = useRef(new THREE.Vector3());
+  const flyStartTarget  = useRef(new THREE.Vector3());
+  const flyProgress     = useRef(0);
 
   useEffect(() => { camera.position.set(0, 8, 28); camera.lookAt(0, 0, 0); }, [camera]);
 
+  // Reset camera
   useEffect(() => {
     if (cameraResetTick === lastResetTick.current) return;
     lastResetTick.current = cameraResetTick;
     camera.position.set(0, 8, 28);
-    if (controlsRef.current) { controlsRef.current.target.set(0, 0, 0); controlsRef.current.update(); }
+    if (controlsRef.current) {
+      controlsRef.current.target.set(0, 0, 0);
+      controlsRef.current.update();
+    }
     setZoomTarget(28);
+    flyActive.current = false;
   }, [cameraResetTick, camera, setZoomTarget]);
 
+  // Zoom-slider lerp trigger
   useEffect(() => {
     if (_zoomLerpTick === prevLerpTick.current) return;
     prevLerpTick.current = _zoomLerpTick;
-    lerpActive.current = true;
+    zoomLerpActive.current = true;
   }, [_zoomLerpTick]);
+
+  // Fly-to trigger: when a star is selected, start smooth transition
+  useEffect(() => {
+    if (_cameraFlyTick === prevFlyTick.current) return;
+    prevFlyTick.current = _cameraFlyTick;
+    if (!cameraFlyTarget) return;
+    flyTargetVec.current.set(cameraFlyTarget.x, cameraFlyTarget.y, cameraFlyTarget.z);
+    flyStartPos.current.copy(camera.position);
+    flyStartTarget.current.copy(controlsRef.current?.target ?? new THREE.Vector3());
+    flyProgress.current = 0;
+    flyActive.current = true;
+    // Pause zoom lerp while flying
+    zoomLerpActive.current = false;
+  }, [_cameraFlyTick, cameraFlyTarget, camera]);
 
   // 2D: snap to bird's-eye
   useEffect(() => {
@@ -76,20 +125,64 @@ function CameraManager() {
       const dist = camera.position.length();
       camera.position.set(0.001, dist, 0.001);
       camera.lookAt(0, 0, 0);
-      if (controlsRef.current) { controlsRef.current.target.set(0, 0, 0); controlsRef.current.update(); }
+      if (controlsRef.current) {
+        controlsRef.current.target.set(0, 0, 0);
+        controlsRef.current.update();
+      }
     }
   }, [mapMode, camera]);
 
-  useFrame(() => {
-    if (!lerpActive.current) return;
-    const pos = camera.position;
-    const currentDist = pos.length();
-    if (Math.abs(currentDist - zoomTarget) < 0.01) { lerpActive.current = false; return; }
-    pos.normalize().multiplyScalar(currentDist + (zoomTarget - currentDist) * 0.08);
-    controlsRef.current?.update();
+  useFrame((_, delta) => {
+    const controls = controlsRef.current;
+
+    // --- Fly-to animation (smooth camera transition to selected star) ---
+    if (flyActive.current && controls) {
+      flyProgress.current = Math.min(1, flyProgress.current + delta * 1.8);
+      // Ease-out cubic: fast start, gentle arrival
+      const t = 1 - Math.pow(1 - flyProgress.current, 3);
+
+      // Lerp orbit target toward the star
+      controls.target.lerpVectors(flyStartTarget.current, flyTargetVec.current, t);
+
+      // Compute desired camera offset: maintain a viewing distance relative to
+      // how far the star is from origin, with a minimum orbit radius.
+      const starDist = flyTargetVec.current.length();
+      const viewDist = Math.max(2, Math.min(starDist * 0.5, 20));
+      // Goal position: offset from star along the original camera direction
+      const dir = new THREE.Vector3().subVectors(flyStartPos.current, flyStartTarget.current);
+      if (dir.lengthSq() < 0.001) dir.set(0, 1, 1);
+      dir.normalize().multiplyScalar(viewDist);
+      const goalPos = new THREE.Vector3().copy(flyTargetVec.current).add(dir);
+
+      camera.position.lerpVectors(flyStartPos.current, goalPos, t);
+      controls.update();
+
+      if (flyProgress.current >= 1) {
+        flyActive.current = false;
+        // Sync the zoom slider to the new distance
+        const newDist = camera.position.distanceTo(controls.target);
+        syncCameraZoom(newDist);
+      }
+      return; // skip other lerps while flying
+    }
+
+    // --- Zoom slider lerp ---
+    if (zoomLerpActive.current) {
+      const pos = camera.position;
+      const target = controls?.target ?? new THREE.Vector3();
+      const currentDist = pos.distanceTo(target);
+      if (Math.abs(currentDist - zoomTarget) < 0.01) {
+        zoomLerpActive.current = false;
+      } else {
+        const dir = new THREE.Vector3().subVectors(pos, target).normalize();
+        const newDist = currentDist + (zoomTarget - currentDist) * 0.08;
+        pos.copy(target).addScaledVector(dir, newDist);
+        controls?.update();
+      }
+    }
   });
 
-  // In 2D mode: remap left-click from rotate → pan so the user can drag around
+  // In 2D mode: remap left-click from rotate to pan so the user can drag around
   const mouseButtons2d = useMemo(() => ({
     LEFT:   THREE.MOUSE.PAN,
     MIDDLE: THREE.MOUSE.DOLLY,
@@ -113,19 +206,23 @@ function CameraManager() {
     <OrbitControls
       // @ts-expect-error ref typing
       ref={controlsRef}
-      enableDamping dampingFactor={0.10}
+      enableDamping dampingFactor={0.12}
       rotateSpeed={0.45}
-      zoomSpeed={1.0} panSpeed={0.6}
+      zoomSpeed={0.8} panSpeed={0.6}
       minDistance={0.2} maxDistance={60000}
+      // Prevent camera from flipping upside down
+      maxPolarAngle={Math.PI * 0.95}
+      minPolarAngle={Math.PI * 0.05}
       makeDefault
       mouseButtons={mapMode === '2d' ? mouseButtons2d : mouseButtons3d}
       touches={mapMode === '2d' ? touches2d : touches3d}
       onChange={() => {
-        if (lerpActive.current) return;
+        if (flyActive.current || zoomLerpActive.current) return;
         const now = Date.now();
         if (now - lastSyncMs.current < 50) return;
         lastSyncMs.current = now;
-        syncCameraZoom(camera.position.length());
+        const target = controlsRef.current?.target ?? new THREE.Vector3();
+        syncCameraZoom(camera.position.distanceTo(target));
       }}
     />
   );
@@ -288,10 +385,32 @@ function RaycasterScaler() {
   return null;
 }
 
+// ── Deferred bloom — waits for scene to settle before enabling post-processing ──
+function DeferredBloom() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    // Delay bloom activation so initial render + data loading is not impacted
+    const id = setTimeout(() => setReady(true), 2000);
+    return () => clearTimeout(id);
+  }, []);
+  if (!ready) return null;
+  return (
+    <EffectComposer>
+      <Bloom
+        intensity={0.35}
+        luminanceThreshold={0.4}
+        luminanceSmoothing={0.9}
+        mipmapBlur
+      />
+    </EffectComposer>
+  );
+}
+
 // ── 3D scene ──────────────────────────────────────────────
 function Scene({ exoHosts }: { exoHosts: Star[] }) {
   const { stars, selectedStar, measureTarget, setSelected, theme } = useStore();
-  const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
+  const dark = theme === 'dark';
+  const bg = dark ? '#0a0806' : '#f0ece0';
   return (
     <>
       <color attach="background" args={[bg]} />
@@ -309,6 +428,8 @@ function Scene({ exoHosts }: { exoHosts: Star[] }) {
       {selectedStar && <SelectionMarker star={selectedStar} color="#5a3e1e" />}
       {measureTarget && <SelectionMarker star={measureTarget} color="#2e5a6e" />}
       {selectedStar && measureTarget && <MeasureLine from={selectedStar} to={measureTarget} />}
+      {/* Subtle bloom for bright star glow — deferred to avoid blocking initial render */}
+      {dark && <DeferredBloom />}
     </>
   );
 }

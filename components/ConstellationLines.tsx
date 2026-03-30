@@ -96,6 +96,14 @@ export function ConstellationLines({ stars }: Props) {
     material.color.set(theme === 'dark' ? '#7a6e5e' : '#8a7e6e');
   }, [theme, material]);
 
+  // Dispose geometry and material on unmount
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      material.dispose();
+    };
+  }, [geometry, material]);
+
   if (!showConstellations) return null;
 
   return <lineSegments geometry={geometry} material={material} />;

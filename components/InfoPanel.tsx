@@ -28,13 +28,13 @@ export function InfoPanel() {
         <span className="info-label">Magnitude</span>
         <span className="info-value">{selectedStar.mag.toFixed(2)}</span>
 
-        <span className="info-label">Spectral</span>
+        <span className="info-label">Spectral Class</span>
         <span className="info-value mono">{selectedStar.spectral}</span>
 
-        <span className="info-label">RA</span>
+        <span className="info-label">Right Ascension</span>
         <span className="info-value mono">{formatRA(selectedStar.ra)}</span>
 
-        <span className="info-label">Dec</span>
+        <span className="info-label">Declination</span>
         <span className="info-value mono">{formatDec(selectedStar.dec)}</span>
 
         <span className="info-label">Catalog</span>

@@ -19,6 +19,17 @@ function buildRing(r: number): Float32Array {
   return pts;
 }
 
+// Axis lines on the galactic plane for orientation (X and Z through origin)
+const AXIS_LEN = 12000; // parsecs
+
+function buildAxisLines(): { xAxis: Float32Array; zAxis: Float32Array; yAxis: Float32Array } {
+  const xAxis = new Float32Array([-AXIS_LEN, 0, 0, AXIS_LEN, 0, 0]);
+  const zAxis = new Float32Array([0, 0, -AXIS_LEN, 0, 0, AXIS_LEN]);
+  // Short vertical "up" indicator near origin
+  const yAxis = new Float32Array([0, 0, 0, 0, 3, 0]);
+  return { xAxis, zAxis, yAxis };
+}
+
 export function SceneGrid() {
   const { theme } = useStore();
   const dark = theme === 'dark';
@@ -26,6 +37,12 @@ export function SceneGrid() {
   const rings = useMemo(() =>
     RING_RADII.map(r => ({ r, pts: buildRing(r) })),
   []);
+
+  const axes = useMemo(() => buildAxisLines(), []);
+
+  const ringColor = dark ? '#2a2420' : '#bab0a4';
+  const axisColor = dark ? '#3a3028' : '#a8a090';
+  const upColor   = dark ? '#4a3e30' : '#9a8e80';
 
   return (
     <group>
@@ -38,12 +55,33 @@ export function SceneGrid() {
             />
           </bufferGeometry>
           <lineBasicMaterial
-            color={dark ? '#2a2420' : '#bab0a4'}
+            color={ringColor}
             transparent
             opacity={dark ? 0.45 : 0.5}
           />
         </line>
       ))}
+      {/* X axis line (galactic plane reference) */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[axes.xAxis, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial color={axisColor} transparent opacity={0.25} />
+      </line>
+      {/* Z axis line (galactic plane reference) */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[axes.zAxis, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial color={axisColor} transparent opacity={0.25} />
+      </line>
+      {/* Short "up" indicator at origin */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[axes.yAxis, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial color={upColor} transparent opacity={0.35} />
+      </line>
     </group>
   );
 }

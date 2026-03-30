@@ -12,21 +12,23 @@
     "fetch-gaia:dry": "python3 scripts/fetch-gaia.py --dry-run"
   },
   "dependencies": {
+    "@react-three/drei": "^9.114.0",
+    "@react-three/fiber": "^8.17.10",
+    "@react-three/postprocessing": "^3.0.4",
     "next": "14.2.18",
+    "postprocessing": "^6.39.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.169.0",
-    "@react-three/fiber": "^8.17.10",
-    "@react-three/drei": "^9.114.0",
     "zustand": "^5.0.1"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
     "@types/node": "^20.17.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@types/three": "^0.169.0",
     "eslint": "^8",
-    "eslint-config-next": "14.2.18"
+    "eslint-config-next": "14.2.18",
+    "typescript": "^5.6.3"
   }
 }

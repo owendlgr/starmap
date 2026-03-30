@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Star } from '@/lib/types';
@@ -12,10 +12,16 @@ uniform float uPixelRatio;
 
 void main() {
   vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-  float dist = max(-mvPos.z, 0.1);
-  float scaled = aSize * uPixelRatio * clamp(220.0 / dist, 0.2, 4.0);
-  gl_PointSize = clamp(scaled * 1.6, 3.0, 22.0);
-  vAlpha = clamp(aSize / 4.5, 0.45, 1.0);
+  float camDist = length(mvPos.xyz);
+
+  // Smooth distance scaling
+  float distAtten = clamp(300.0 / camDist, 0.15, 4.0);
+  float scaled = aSize * uPixelRatio * distAtten * 1.6;
+  gl_PointSize = clamp(scaled, 3.0, 26.0);
+
+  // Fade at extreme distance
+  float distFade = smoothstep(80000.0, 20000.0, camDist);
+  vAlpha = clamp(aSize / 4.5, 0.45, 1.0) * distFade;
   gl_Position = projectionMatrix * mvPos;
 }
 `;
@@ -28,11 +34,13 @@ void main() {
   vec2 center = gl_PointCoord - 0.5;
   float r = length(center);
   if (r > 0.5) discard;
-  float inner = smoothstep(0.24, 0.29, r);
-  float outer = 1.0 - smoothstep(0.43, 0.49, r);
+  float inner = smoothstep(0.22, 0.28, r);
+  float outer = 1.0 - smoothstep(0.42, 0.49, r);
   float ring  = inner * outer;
   if (ring < 0.05) discard;
-  gl_FragColor = vec4(uColor, vAlpha * ring);
+  // Subtle glow around the ring
+  float glow = (1.0 - smoothstep(0.15, 0.5, r)) * 0.15;
+  gl_FragColor = vec4(uColor, vAlpha * (ring + glow));
 }
 `;
 
@@ -43,6 +51,7 @@ interface Props {
 export function ExoplanetHostField({ stars }: Props) {
   const { gl } = useThree();
   const { setSelected, mode, setMeasureTarget, theme, showExoplanets } = useStore();
+  const prevGeoRef = useRef<THREE.BufferGeometry | null>(null);
 
   const [geometry, idMap] = useMemo(() => {
     const n = stars.length;
@@ -58,8 +67,20 @@ export function ExoplanetHostField({ stars }: Props) {
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
     geo.computeBoundingSphere();
+    // Dispose previous geometry to prevent GPU memory leak
+    if (prevGeoRef.current && prevGeoRef.current !== geo) {
+      prevGeoRef.current.dispose();
+    }
+    prevGeoRef.current = geo;
     return [geo, map];
   }, [stars]);
+
+  // Dispose geometry and material on unmount
+  useEffect(() => {
+    return () => {
+      prevGeoRef.current?.dispose();
+    };
+  }, []);
 
   const material = useMemo(() => {
     const dark = theme === 'dark';
@@ -95,5 +116,5 @@ export function ExoplanetHostField({ stars }: Props) {
   }, [idMap, mode, setSelected, setMeasureTarget]);
 
   if (!showExoplanets) return null;
-  return <points geometry={geometry} material={material} onClick={handleClick} />;
+  return <points geometry={geometry} material={material} onClick={handleClick} frustumCulled />;
 }

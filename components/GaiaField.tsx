@@ -24,17 +24,25 @@ const HEADER_BYTES = 8;
 const STAR_FLOATS  = 8;
 const STAR_BYTES   = STAR_FLOATS * 4; // 32
 
-// ── GLSL (same as StarField) ──────────────────────────────
+// ── GLSL — improved with distance fade + circular sprites ──
 const VERT = `
 attribute float aSize;
 varying float vAlpha;
 uniform float uPixelRatio;
 void main() {
   vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-  float dist = max(-mvPos.z, 0.1);
-  float scaled = aSize * uPixelRatio * clamp(220.0 / dist, 0.2, 4.0);
-  gl_PointSize = clamp(scaled, 1.5, 20.0);
-  vAlpha = clamp(aSize / 5.5, 0.25, 0.85);
+  float camDist = length(mvPos.xyz);
+
+  // Smooth distance attenuation
+  float distAtten = clamp(300.0 / camDist, 0.1, 4.0);
+  float scaled = aSize * uPixelRatio * distAtten;
+  gl_PointSize = clamp(scaled, 1.0, 18.0);
+
+  // Fade dim Gaia stars at distance to reduce visual noise
+  float baseFade = clamp(aSize / 5.5, 0.2, 0.8);
+  float distFade = smoothstep(60000.0, 15000.0, camDist);
+  vAlpha = baseFade * mix(distFade, 1.0, clamp(aSize / 3.0, 0.0, 1.0));
+
   gl_Position = projectionMatrix * mvPos;
 }
 `;
@@ -45,8 +53,11 @@ void main() {
   vec2 c = gl_PointCoord - 0.5;
   float r = length(c);
   if (r > 0.5) discard;
-  float alpha = vAlpha * (1.0 - smoothstep(0.28, 0.5, r));
-  gl_FragColor = vec4(uColor, alpha);
+  // Soft circular sprite with slight glow
+  float core = 1.0 - smoothstep(0.0, 0.25, r);
+  float halo = (1.0 - smoothstep(0.18, 0.5, r)) * 0.4;
+  float brightness = core + halo;
+  gl_FragColor = vec4(uColor, vAlpha * brightness);
 }
 `;
 
@@ -113,6 +124,11 @@ function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.Shad
     return geo;
   }, [chunk]);
 
+  // Dispose geometry on unmount to prevent GPU memory leaks
+  useEffect(() => {
+    return () => { geometry.dispose(); };
+  }, [geometry]);
+
   const handleClick = (e: THREE.Event) => {
     const ev = e as unknown as { intersections: { index: number }[] };
     if (!ev.intersections?.length) return;
@@ -122,7 +138,7 @@ function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.Shad
     if (mode === 'measure') setMeasureTarget(star); else setSelected(star);
   };
 
-  return <points geometry={geometry} material={material} onClick={handleClick} />;
+  return <points geometry={geometry} material={material} onClick={handleClick} frustumCulled />;
 }
 
 // ── Main GaiaField component ──────────────────────────────
@@ -156,32 +172,51 @@ export function GaiaField() {
     );
   }, [theme, material]);
 
-  // Load all chunks in parallel, add each to state as it arrives
+  // Load chunks progressively: 2 at a time to avoid saturating bandwidth
+  // and blocking higher-priority resources (main stars, exoplanets).
+  // Deferred until after initial scene renders via requestIdleCallback.
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
 
-    fetch('/data/gaia/manifest.json')
-      .then(r => { if (!r.ok) throw new Error('no manifest'); return r.json(); })
-      .then((manifest: { chunks: string[]; id_base: number }) => {
-        const base = manifest.id_base ?? 4_000_000;
-        // Kick off all chunk fetches in parallel; compute globalOffset from accumulated state
-        manifest.chunks.forEach((name) => {
-          fetch(`/data/gaia/${name}`)
-            .then(r => { if (!r.ok) throw new Error(`chunk ${name} not found`); return r.arrayBuffer(); })
-            .then(buf => {
+    const startLoad = () => {
+      fetch('/data/gaia/manifest.json')
+        .then(r => { if (!r.ok) throw new Error('no manifest'); return r.json(); })
+        .then(async (manifest: { chunks: string[]; id_base: number }) => {
+          const base = manifest.id_base ?? 4_000_000;
+          const CONCURRENCY = 2;
+          const names = manifest.chunks;
+
+          // Load in batches of CONCURRENCY to avoid bandwidth saturation
+          for (let i = 0; i < names.length; i += CONCURRENCY) {
+            const batch = names.slice(i, i + CONCURRENCY);
+            const results = await Promise.allSettled(
+              batch.map(name =>
+                fetch(`/data/gaia/${name}`)
+                  .then(r => { if (!r.ok) throw new Error(`chunk ${name} not found`); return r.arrayBuffer(); })
+              )
+            );
+            for (const result of results) {
+              if (result.status !== 'fulfilled') continue;
+              const buf = result.value;
               const count = readChunkMeta(buf);
-              if (count === null || count === 0) return;
-              // Compute offset from already-loaded chunks so IDs don't collide
+              if (count === null || count === 0) continue;
               setChunks(prev => {
                 const offset = base + prev.reduce((s, c) => s + c.count, 0);
                 return [...prev, { buf, count, globalOffset: offset }];
               });
-            })
-            .catch(() => {});
-        });
-      })
-      .catch(() => {}); // no Gaia data yet — silent
+            }
+          }
+        })
+        .catch(() => {}); // no Gaia data yet — silent
+    };
+
+    // Defer Gaia loading to let initial scene render first
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(startLoad, { timeout: 3000 });
+    } else {
+      setTimeout(startLoad, 500);
+    }
   }, []);
 
   if (chunks.length === 0 || !showGaia) return null;

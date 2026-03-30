@@ -133,13 +133,13 @@ export function SidePanel() {
             <Section title="Physical Properties">
               <div className="side-grid">
                 <Row label="Spectral Class" value={selectedStar.spectral || '—'} mono />
-                <Row label="Temperature (est.)"
+                <Row label="Temperature (estimated)"
                   value={isFinite(selectedStar.bv)
                     ? formatTemperature(estimateTemperature(selectedStar.bv))
                     : '—'} />
-                <Row label="Mass (est.)"  value={estimateMass(selectedStar.spectral)} />
-                <Row label="Age (est.)"   value={estimateAge(selectedStar.spectral)} />
-                <Row label="B−V Color"
+                <Row label="Mass (estimated)"  value={estimateMass(selectedStar.spectral)} />
+                <Row label="Age (estimated)"   value={estimateAge(selectedStar.spectral)} />
+                <Row label="B-V Color Index"
                   value={isFinite(selectedStar.bv) ? selectedStar.bv.toFixed(3) : '—'} mono />
                 <Row label="Object Type"  value={selectedStar.type} />
               </div>
@@ -148,8 +148,8 @@ export function SidePanel() {
             {/* Photometry */}
             <Section title="Photometry">
               <div className="side-grid">
-                <Row label="App. Magnitude" value={selectedStar.mag.toFixed(2)} mono />
-                <Row label="Abs. Magnitude"
+                <Row label="Apparent Magnitude" value={selectedStar.mag.toFixed(2)} mono />
+                <Row label="Absolute Magnitude"
                   value={selectedStar.dist_pc > 0
                     ? absoluteMagnitude(selectedStar.mag, selectedStar.dist_pc)
                     : selectedStar.mag.toFixed(2)}
@@ -160,10 +160,10 @@ export function SidePanel() {
             {/* Coordinates */}
             <Section title="Equatorial Coordinates">
               <div className="side-grid">
-                <Row label="RA"     value={formatRA(selectedStar.ra)}   mono />
-                <Row label="Dec"    value={formatDec(selectedStar.dec)} mono />
-                <Row label="RA (°)" value={selectedStar.ra.toFixed(4) + '°'} mono />
-                <Row label="Dec (°)" value={selectedStar.dec.toFixed(4) + '°'} mono />
+                <Row label="Right Ascension"     value={formatRA(selectedStar.ra)}   mono />
+                <Row label="Declination"    value={formatDec(selectedStar.dec)} mono />
+                <Row label="Right Ascension (degrees)" value={selectedStar.ra.toFixed(4) + '°'} mono />
+                <Row label="Declination (degrees)" value={selectedStar.dec.toFixed(4) + '°'} mono />
               </div>
             </Section>
 
@@ -171,8 +171,8 @@ export function SidePanel() {
             <Section title="Catalog & Discovery">
               <div className="side-grid">
                 <Row label="Catalog"     value={selectedStar.catalog || '—'} />
-                <Row label="HIP #"       value={selectedStar.hip > 0 ? selectedStar.hip.toString() : '—'} mono />
-                <Row label="Object ID"   value={selectedStar.id.toString()} mono />
+                <Row label="Hipparcos Number"       value={selectedStar.hip > 0 ? selectedStar.hip.toString() : '—'} mono />
+                <Row label="Object Identifier"   value={selectedStar.id.toString()} mono />
                 <Row label="Data Source"
                   value={selectedStar.hip > 0 ? 'Hipparcos (real coordinates)' : 'Generated catalog'} />
               </div>

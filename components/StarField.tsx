@@ -5,32 +5,80 @@ import * as THREE from 'three';
 import type { Star } from '@/lib/types';
 import { useStore } from '@/lib/useStore';
 
+// ── Spectral type to RGB color mapping ───────────────────
+// B=blue, O=blue-white, A=white, F=yellow-white, G=yellow, K=orange, M=red
+function spectralToColor(spectral: string, bv: number): [number, number, number] {
+  const s = spectral?.charAt(0)?.toUpperCase() ?? '';
+  switch (s) {
+    case 'O': return [0.62, 0.69, 1.0];   // blue-white
+    case 'B': return [0.67, 0.75, 1.0];   // blue
+    case 'A': return [0.85, 0.87, 1.0];   // white
+    case 'F': return [1.0,  0.96, 0.85];  // yellow-white
+    case 'G': return [1.0,  0.90, 0.65];  // yellow
+    case 'K': return [1.0,  0.76, 0.45];  // orange
+    case 'M': return [1.0,  0.55, 0.35];  // red
+    default: {
+      // Fallback: derive from B-V color index
+      if (bv < 0.0)  return [0.65, 0.72, 1.0];
+      if (bv < 0.3)  return [0.85, 0.88, 1.0];
+      if (bv < 0.6)  return [1.0,  0.96, 0.85];
+      if (bv < 1.0)  return [1.0,  0.85, 0.58];
+      if (bv < 1.4)  return [1.0,  0.72, 0.42];
+      return [1.0, 0.55, 0.35];
+    }
+  }
+}
+
 const VERT = `
 attribute float aSize;
+attribute float aMag;
+attribute vec3  aStarColor;
 varying float vAlpha;
+varying vec3  vColor;
 uniform float uPixelRatio;
 
 void main() {
   vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-  float dist = max(-mvPos.z, 0.1);
-  float basePx = aSize * uPixelRatio;
-  float scaled = basePx * clamp(220.0 / dist, 0.2, 4.0);
-  gl_PointSize = clamp(scaled, 2.0, 22.0);
-  vAlpha = clamp(aSize / 5.5, 0.35, 1.0);
+  float camDist = length(mvPos.xyz);
+
+  // Magnitude-based size: bright stars (low mag) are larger
+  float magFactor = clamp(1.0 - (aMag - (-1.0)) / 8.0, 0.15, 1.0);
+  float basePx = aSize * uPixelRatio * (0.6 + magFactor * 0.8);
+
+  // Distance attenuation: smooth falloff instead of pop in/out
+  float distAtten = clamp(300.0 / camDist, 0.15, 5.0);
+  float scaled = basePx * distAtten;
+  gl_PointSize = clamp(scaled, 1.5, 28.0);
+
+  // Alpha: bright stars stay opaque, dim stars fade at distance
+  float magAlpha = clamp(magFactor * 1.2, 0.3, 1.0);
+  float distFade = smoothstep(80000.0, 20000.0, camDist);
+  // Dim stars (high mag) fade sooner
+  float dimFade = mix(distFade, 1.0, magFactor);
+  vAlpha = magAlpha * clamp(dimFade, 0.0, 1.0);
+
+  vColor = aStarColor;
   gl_Position = projectionMatrix * mvPos;
 }
 `;
 
 const FRAG = `
 varying float vAlpha;
-uniform vec3 uColor;
+varying vec3  vColor;
 
 void main() {
   vec2 center = gl_PointCoord - 0.5;
   float r = length(center);
   if (r > 0.5) discard;
-  float alpha = vAlpha * (1.0 - smoothstep(0.28, 0.5, r));
-  gl_FragColor = vec4(uColor, alpha);
+
+  // Circular point sprite with soft glow halo
+  float core = 1.0 - smoothstep(0.0, 0.22, r);
+  float halo = (1.0 - smoothstep(0.15, 0.5, r)) * 0.45;
+  float brightness = core + halo;
+
+  // Brighter core, dimmer halo for glow effect
+  float alpha = vAlpha * brightness;
+  gl_FragColor = vec4(vColor * (0.8 + core * 0.4), alpha);
 }
 `;
 
@@ -43,51 +91,82 @@ export function StarField({ stars, onSelect }: Props) {
   const { gl } = useThree();
   const { mode, setMeasureTarget, showHipparcos, theme } = useStore();
   const pointsRef = useRef<THREE.Points>(null);
+  const prevGeoRef = useRef<THREE.BufferGeometry | null>(null);
 
   const filtered = useMemo(() => showHipparcos ? stars : [], [stars, showHipparcos]);
 
   const [geometry, idMap] = useMemo(() => {
     const geo = new THREE.BufferGeometry();
     const n = filtered.length;
-    const pos   = new Float32Array(n * 3);
-    const sizes = new Float32Array(n);
-    const map   = new Map<number, Star>();
+    const pos    = new Float32Array(n * 3);
+    const sizes  = new Float32Array(n);
+    const mags   = new Float32Array(n);
+    const colors = new Float32Array(n * 3);
+    const map    = new Map<number, Star>();
     filtered.forEach((s, i) => {
       pos[i*3] = s.x; pos[i*3+1] = s.y; pos[i*3+2] = s.z;
       sizes[i] = s.size;
+      mags[i]  = s.mag;
+      const [cr, cg, cb] = spectralToColor(s.spectral, s.bv);
+      colors[i*3] = cr; colors[i*3+1] = cg; colors[i*3+2] = cb;
       map.set(i, s);
     });
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
+    geo.setAttribute('position',  new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aSize',     new THREE.BufferAttribute(sizes, 1));
+    geo.setAttribute('aMag',      new THREE.BufferAttribute(mags, 1));
+    geo.setAttribute('aStarColor', new THREE.BufferAttribute(colors, 3));
     geo.computeBoundingSphere();
+    // Dispose previous geometry to prevent GPU memory leak
+    if (prevGeoRef.current && prevGeoRef.current !== geo) {
+      prevGeoRef.current.dispose();
+    }
+    prevGeoRef.current = geo;
     return [geo, map];
   }, [filtered]);
 
+  // Dispose geometry and material on unmount
+  useEffect(() => {
+    return () => {
+      prevGeoRef.current?.dispose();
+    };
+  }, []);
+
   const material = useMemo(() => {
-    const dark = theme === 'dark';
     return new THREE.ShaderMaterial({
       vertexShader: VERT,
       fragmentShader: FRAG,
       uniforms: {
         uPixelRatio: { value: gl.getPixelRatio() },
-        uColor:      { value: new THREE.Color(dark ? 0.85 : 0.10, dark ? 0.80 : 0.07, dark ? 0.70 : 0.03) },
       },
       transparent: true,
       depthWrite: false,
-      blending: THREE.NormalBlending,
+      blending: THREE.AdditiveBlending,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl]);
 
-  // Update color uniform when theme changes without recreating the material
+  // Adjust base star color brightness for theme via per-vertex colors
+  // (spectral colors are already baked into geometry; theme just adjusts intensity)
   useEffect(() => {
     const dark = theme === 'dark';
-    material.uniforms.uColor.value.setRGB(
-      dark ? 0.85 : 0.10,
-      dark ? 0.80 : 0.07,
-      dark ? 0.70 : 0.03,
-    );
-  }, [theme, material]);
+    // In light mode, darken star colors so they show on bright background
+    if (!dark && geometry.attributes.aStarColor) {
+      const colors = geometry.attributes.aStarColor as THREE.BufferAttribute;
+      filtered.forEach((s, i) => {
+        const [cr, cg, cb] = spectralToColor(s.spectral, s.bv);
+        // Invert/darken for light mode
+        colors.setXYZ(i, cr * 0.12, cg * 0.09, cb * 0.05);
+      });
+      colors.needsUpdate = true;
+    } else if (dark && geometry.attributes.aStarColor) {
+      const colors = geometry.attributes.aStarColor as THREE.BufferAttribute;
+      filtered.forEach((s, i) => {
+        const [cr, cg, cb] = spectralToColor(s.spectral, s.bv);
+        colors.setXYZ(i, cr, cg, cb);
+      });
+      colors.needsUpdate = true;
+    }
+  }, [theme, geometry, filtered]);
 
   const handleClick = useCallback((e: THREE.Event) => {
     const ev = e as unknown as { intersections: { index: number }[] };
@@ -99,5 +178,5 @@ export function StarField({ stars, onSelect }: Props) {
     if (mode === 'measure') setMeasureTarget(star); else onSelect(star);
   }, [idMap, mode, onSelect, setMeasureTarget]);
 
-  return <points ref={pointsRef} geometry={geometry} material={material} onClick={handleClick} />;
+  return <points ref={pointsRef} geometry={geometry} material={material} onClick={handleClick} frustumCulled />;
 }

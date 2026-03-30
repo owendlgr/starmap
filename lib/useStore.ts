@@ -49,6 +49,11 @@ interface StoreState {
   setZoomTarget: (v: number) => void;  // slider/reset → triggers lerp
   syncCameraZoom: (v: number) => void; // OrbitControls → syncs display only
 
+  // Smooth fly-to target (set when a star is selected)
+  cameraFlyTarget: { x: number; y: number; z: number } | null;
+  _cameraFlyTick: number;
+  setCameraFlyTarget: (pos: { x: number; y: number; z: number } | null) => void;
+
   // Theme
   theme: 'light' | 'dark';
   setTheme: (t: 'light' | 'dark') => void;
@@ -74,7 +79,11 @@ export const useStore = create<StoreState>((set) => ({
 
   selectedStar: null,
   measureTarget: null,
-  setSelected: (star) => set({ selectedStar: star }),
+  setSelected: (star) => set(s => ({
+    selectedStar: star,
+    // Trigger smooth fly-to when selecting a star (not when clearing)
+    ...(star ? { cameraFlyTarget: { x: star.x, y: star.y, z: star.z }, _cameraFlyTick: s._cameraFlyTick + 1 } : {}),
+  })),
   setMeasureTarget: (star) => set({ measureTarget: star }),
 
   mode: 'explore',
@@ -111,7 +120,18 @@ export const useStore = create<StoreState>((set) => ({
   zoomTarget: 30,
   _zoomLerpTick: 0,
   setZoomTarget: (v) => set(s => ({ zoomTarget: v, _zoomLerpTick: s._zoomLerpTick + 1 })),
-  syncCameraZoom: (v) => set({ zoomTarget: v }),
+  // Only update if value changed by >1% to avoid unnecessary re-renders during orbit drag
+  syncCameraZoom: (v) => set(state => {
+    if (Math.abs(state.zoomTarget - v) / (state.zoomTarget || 1) < 0.01) return state;
+    return { zoomTarget: v };
+  }),
+
+  cameraFlyTarget: null,
+  _cameraFlyTick: 0,
+  setCameraFlyTarget: (pos) => set(s => ({
+    cameraFlyTarget: pos,
+    _cameraFlyTick: s._cameraFlyTick + 1,
+  })),
 
   theme: 'light',
   setTheme: (t) => set({ theme: t }),
