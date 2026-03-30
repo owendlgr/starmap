@@ -38,6 +38,7 @@ varying vec3  vColor;
 uniform float uPixelRatio;
 uniform float uTime;
 uniform float uMagLimit;
+uniform float uFlatten;
 
 void main() {
   if (aMag > uMagLimit) {
@@ -47,7 +48,9 @@ void main() {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     return;
   }
-  vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+  vec3 pos = position;
+  pos.y = mix(pos.y, 0.0, uFlatten);
+  vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
   float camDist = length(mvPos.xyz);
 
   // Magnitude-based size: bright stars (low mag) are larger
@@ -101,7 +104,7 @@ interface Props {
 
 export function StarField({ stars, onSelect }: Props) {
   const { gl } = useThree();
-  const { mode, setMeasureTarget, showHipparcos, theme, magLimit, setHoveredStar } = useStore();
+  const { mode, setMeasureTarget, showHipparcos, theme, magLimit, setHoveredStar, flattenAmount } = useStore();
   const pointsRef = useRef<THREE.Points>(null);
   const prevGeoRef = useRef<THREE.BufferGeometry | null>(null);
 
@@ -151,6 +154,7 @@ export function StarField({ stars, onSelect }: Props) {
         uPixelRatio: { value: gl.getPixelRatio() },
         uTime: { value: 0.0 },
         uMagLimit: { value: 12.0 },
+        uFlatten: { value: 0.0 },
       },
       transparent: true,
       depthWrite: false,
@@ -192,6 +196,7 @@ export function StarField({ stars, onSelect }: Props) {
   useFrame(() => {
     material.uniforms.uTime.value = performance.now() / 1000.0;
     material.uniforms.uMagLimit.value = magLimit;
+    material.uniforms.uFlatten.value = flattenAmount;
   });
 
   const handleClick = useCallback((e: THREE.Event) => {

@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { StarField } from './StarField';
 import { GaiaField } from './GaiaField';
 import { ConstellationLines } from './ConstellationLines';
+import { CONSTELLATION_PAIRS } from '@/lib/constellations';
 import { SelectionMarker, MeasureLine } from './SelectionMarker';
 import { SceneGrid } from './SceneGrid';
 import { useStore } from '@/lib/useStore';
@@ -483,28 +484,7 @@ function TwoDDotsCanvas({
       ctx.strokeStyle = dark ? 'rgba(212, 188, 122, 0.6)' : 'rgba(74, 62, 46, 0.5)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      // Import constellation pairs inline to avoid circular dependency
-      const PAIRS: [number, number][] = [
-        [27989,25336],[27989,26311],[25336,26311],[26311,26727],[26727,24436],[25336,24436],[27366,26727],
-        [54061,53910],[53910,58001],[58001,59774],[59774,62956],[62956,65378],[65378,67301],
-        [746,4427],[4427,6686],[6686,8886],[4427,4436],
-        [36850,37826],[36850,31592],[37826,31681],
-        [21421,25428],
-        [32349,30324],[32349,33579],[33579,34444],
-        [80763,85927],[85927,86670],
-        [68702,71683],[68702,68933],
-        [677,5447],[5447,9640],
-        [677,1067],[1067,113963],
-        [61941,65474],
-        [106278,109074],
-        [102098,95947],[95947,102488],
-        [97649,97278],
-        [15863,14576],
-        [90185,89931],[92855,90185],
-        [69673,72105],[69673,69974],
-        [60718,62434],
-      ];
-      for (const [h1, h2] of PAIRS) {
+      for (const [h1, h2] of CONSTELLATION_PAIRS) {
         const a = hipMap.get(h1);
         const b = hipMap.get(h2);
         if (!a || !b) continue;

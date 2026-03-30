@@ -3,7 +3,7 @@ import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import type { Star } from '@/lib/types';
 import { useStore } from '@/lib/useStore';
-import { getConstellation } from '@/lib/coordinates';
+import { CONSTELLATION_PAIRS } from '@/lib/constellations';
 
 interface Props {
   stars: Star[];
@@ -17,53 +17,22 @@ export function ConstellationLines({ stars }: Props) {
   const { showConstellations, theme } = useStore();
 
   const { geometry, lineCount } = useMemo(() => {
-    // Group stars by constellation, keeping only the brightest per group
-    const groups = new Map<string, Star[]>();
+    // Build HIP ID lookup map
+    const hipMap = new Map<number, Star>();
     for (const s of stars) {
-      if (s.dist_pc <= 0) continue; // skip Sol
-      const c = getConstellation(s.ra, s.dec);
-      if (!groups.has(c)) groups.set(c, []);
-      groups.get(c)!.push(s);
+      if (s.hip) hipMap.set(s.hip, s);
     }
 
     const pts: number[] = [];
     let count = 0;
 
-    groups.forEach((group) => {
-      // Sort by magnitude (brightest first) and take top 8 per constellation
-      const bright = group
-        .filter(s => s.mag < 6)
-        .sort((a, b) => a.mag - b.mag)
-        .slice(0, 8);
-
-      if (bright.length < 2) return;
-
-      // Connect via nearest-neighbor chain starting from brightest
-      const used = new Set<number>();
-      let current = bright[0];
-      used.add(current.id);
-
-      for (let i = 1; i < bright.length; i++) {
-        // Find nearest unused star (by angular separation on sky)
-        let nearest: Star | null = null;
-        let minDist = Infinity;
-        for (const candidate of bright) {
-          if (used.has(candidate.id)) continue;
-          const dra = (current.ra - candidate.ra) * Math.cos(current.dec * Math.PI / 180);
-          const ddec = current.dec - candidate.dec;
-          const angDist = Math.sqrt(dra * dra + ddec * ddec);
-          if (angDist < minDist) {
-            minDist = angDist;
-            nearest = candidate;
-          }
-        }
-        if (!nearest || minDist > 30) break; // don't connect stars >30° apart
-        pts.push(current.x, current.y, current.z, nearest.x, nearest.y, nearest.z);
-        count++;
-        used.add(nearest.id);
-        current = nearest;
-      }
-    });
+    for (const [h1, h2] of CONSTELLATION_PAIRS) {
+      const a = hipMap.get(h1);
+      const b = hipMap.get(h2);
+      if (!a || !b) continue;
+      pts.push(a.x, a.y, a.z, b.x, b.y, b.z);
+      count++;
+    }
 
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));

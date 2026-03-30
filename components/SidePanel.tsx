@@ -18,11 +18,16 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="side-section">
-      <div className="side-section-title">{title}</div>
-      {children}
+      <button className="side-section-title" onClick={() => setOpen(!open)}
+        style={{ cursor: 'pointer', background: 'none', border: 'none', width: '100%', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'inherit', font: 'inherit', padding: 0 }}>
+        {title}
+        <span style={{ fontSize: '0.6rem', opacity: 0.5 }}>{open ? '\u25BE' : '\u25B8'}</span>
+      </button>
+      {open && children}
     </div>
   );
 }
@@ -146,7 +151,7 @@ export function SidePanel() {
             </Section>
 
             {/* Physical Properties */}
-            <Section title="Physical Properties">
+            <Section title="Physical Properties" defaultOpen={false}>
               <div className="side-grid">
                 <Row label="Spectral Class" value={selectedStar.spectral || '—'} mono />
                 <Row label="Temperature (estimated)"
@@ -162,7 +167,7 @@ export function SidePanel() {
             </Section>
 
             {/* Photometry */}
-            <Section title="Photometry">
+            <Section title="Photometry" defaultOpen={false}>
               <div className="side-grid">
                 <Row label="Apparent Magnitude" value={selectedStar.mag.toFixed(2)} mono />
                 <Row label="Absolute Magnitude"
@@ -174,7 +179,7 @@ export function SidePanel() {
             </Section>
 
             {/* Coordinates */}
-            <Section title="Equatorial Coordinates">
+            <Section title="Equatorial Coordinates" defaultOpen={false}>
               <div className="side-grid">
                 <Row label="Right Ascension"     value={formatRA(selectedStar.ra)}   mono />
                 <Row label="Declination"    value={formatDec(selectedStar.dec)} mono />
@@ -184,7 +189,7 @@ export function SidePanel() {
             </Section>
 
             {/* Catalog */}
-            <Section title="Catalog & Discovery">
+            <Section title="Catalog & Discovery" defaultOpen={false}>
               <div className="side-grid">
                 <Row label="Catalog"     value={selectedStar.catalog || '—'} />
                 <Row label="Hipparcos Number"       value={selectedStar.hip > 0 ? selectedStar.hip.toString() : '—'} mono />
@@ -192,6 +197,20 @@ export function SidePanel() {
                 <Row label="Data Source"
                   value={selectedStar.hip > 0 ? 'Hipparcos (real coordinates)' : 'Generated catalog'} />
               </div>
+              {selectedStar.hip > 0 && (
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <a href={`https://simbad.cds.unistra.fr/simbad/sim-id?Ident=HIP+${selectedStar.hip}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--chrome-accent)', textDecoration: 'none' }}>
+                    SIMBAD &#8599;
+                  </a>
+                  <a href={`https://en.wikipedia.org/wiki/${encodeURIComponent(selectedStar.name.replace(/ /g, '_'))}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--chrome-accent)', textDecoration: 'none' }}>
+                    Wikipedia &#8599;
+                  </a>
+                </div>
+              )}
             </Section>
 
 

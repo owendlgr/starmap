@@ -1,6 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import * as THREE from 'three';
+import { Html } from '@react-three/drei';
 import { useStore } from '@/lib/useStore';
 
 // 10 light years per cell in parsecs
@@ -115,14 +116,32 @@ function buildPlaneGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
+// Galactic center direction: RA=266.4deg, Dec=-28.9deg in Cartesian
+const GC_DIR = new THREE.Vector3(-0.055, -0.483, -0.874).normalize();
+const GC_END = GC_DIR.clone().multiplyScalar(50);
+
+function buildGCLineGeometry(): THREE.BufferGeometry {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute(
+    'position',
+    new THREE.BufferAttribute(
+      new Float32Array([0, 0, 0, GC_END.x, GC_END.y, GC_END.z]),
+      3
+    )
+  );
+  return geo;
+}
+
 export function SceneGrid() {
   const { theme } = useStore();
   const dark = theme === 'dark';
 
   const { edgeGeo, internalGeo } = useMemo(() => buildCageGeometries(), []);
   const planeGeo = useMemo(() => buildPlaneGeometry(), []);
+  const gcLineGeo = useMemo(() => buildGCLineGeometry(), []);
 
   const lineColor = dark ? '#6a6058' : '#908878';
+  const gcColor = dark ? '#d4a843' : '#8b6914';
 
   return (
     <group>
@@ -154,6 +173,32 @@ export function SceneGrid() {
           depthWrite={false}
         />
       </mesh>
+
+      {/* Galactic center direction arrow */}
+      <lineSegments geometry={gcLineGeo}>
+        <lineBasicMaterial
+          color={gcColor}
+          transparent
+          opacity={0.7}
+        />
+      </lineSegments>
+      <Html
+        position={[GC_END.x, GC_END.y, GC_END.z]}
+        center
+        style={{ pointerEvents: 'none' }}
+      >
+        <span
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '10px',
+            color: gcColor,
+            whiteSpace: 'nowrap',
+            opacity: 0.85,
+          }}
+        >
+          {'Galactic Center \u2192'}
+        </span>
+      </Html>
     </group>
   );
 }

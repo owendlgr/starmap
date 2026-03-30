@@ -27,9 +27,16 @@ const STAR_BYTES   = STAR_FLOATS * 4; // 32
 // ── GLSL — improved with distance fade + circular sprites ──
 const VERT = `
 attribute float aSize;
+attribute float aMag;
 varying float vAlpha;
 uniform float uPixelRatio;
+uniform float uMagLimit;
 void main() {
+  if (aMag > uMagLimit) {
+    gl_PointSize = 0.0;
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+    return;
+  }
   vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
   float camDist = length(mvPos.xyz);
 
@@ -73,19 +80,21 @@ function readChunkMeta(buf: ArrayBuffer): number | null {
 
 // ── Build position + size Float32Arrays directly from raw buffer ──
 // Uses typed array view — no DataView overhead, no per-star object creation.
-function buildGeomBuffers(buf: ArrayBuffer, count: number): { pos: Float32Array; sizes: Float32Array } {
+function buildGeomBuffers(buf: ArrayBuffer, count: number): { pos: Float32Array; sizes: Float32Array; mags: Float32Array } {
   // Float32Array view starting after the 8-byte header
   const floats = new Float32Array(buf, HEADER_BYTES, count * STAR_FLOATS);
   const pos   = new Float32Array(count * 3);
   const sizes = new Float32Array(count);
+  const mags  = new Float32Array(count);
   for (let i = 0; i < count; i++) {
     const f   = i * STAR_FLOATS;
     pos[i*3]   = floats[f];      // x
     pos[i*3+1] = floats[f + 1];  // y
     pos[i*3+2] = floats[f + 2];  // z
+    mags[i]    = floats[f + 3];   // raw magnitude
     sizes[i]   = Math.max(0.3, 3.5 - floats[f + 3] * 0.28); // derived from mag
   }
-  return { pos, sizes };
+  return { pos, sizes, mags };
 }
 
 // ── Reconstruct one Star on click (cheap — only called once per click) ──
@@ -114,10 +123,11 @@ interface ChunkData { buf: ArrayBuffer; count: number; globalOffset: number }
 
 function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.ShaderMaterial }) {
   const geometry = useMemo(() => {
-    const { pos, sizes } = buildGeomBuffers(chunk.buf, chunk.count);
+    const { pos, sizes, mags } = buildGeomBuffers(chunk.buf, chunk.count);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos,   3));
     geo.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
+    geo.setAttribute('aMag',     new THREE.BufferAttribute(mags,  1));
     geo.computeBoundingSphere();
     return geo;
   }, [chunk]);
@@ -133,7 +143,7 @@ function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.Shad
 // ── Main GaiaField component ──────────────────────────────
 export function GaiaField() {
   const { gl } = useThree();
-  const { theme, showGaia } = useStore();
+  const { theme, showGaia, magLimit } = useStore();
   const [chunks, setChunks] = useState<ChunkData[]>([]);
   const loadedRef = useRef(false);
 
@@ -146,6 +156,7 @@ export function GaiaField() {
       uniforms: {
         uPixelRatio: { value: gl.getPixelRatio() },
         uColor:      { value: new THREE.Color(dark ? 0.82 : 0.12, dark ? 0.77 : 0.08, dark ? 0.67 : 0.04) },
+        uMagLimit:   { value: 12.0 },
       },
       transparent: true,
       depthWrite: false,
@@ -160,6 +171,10 @@ export function GaiaField() {
       dark ? 0.82 : 0.12, dark ? 0.77 : 0.08, dark ? 0.67 : 0.04,
     );
   }, [theme, material]);
+
+  useEffect(() => {
+    material.uniforms.uMagLimit.value = magLimit;
+  }, [magLimit, material]);
 
   // Load chunks progressively: 2 at a time to avoid saturating bandwidth
   // and blocking higher-priority resources (main stars, exoplanets).

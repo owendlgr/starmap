@@ -211,6 +211,8 @@ export function NavBar() {
     theme, setTheme,
     mapMode, setMapMode,
     magLimit, setMagLimit,
+    setZoomTarget,
+    flattenAmount, setFlattenAmount,
   } = useStore();
 
   const [extraFiles, setExtraFiles] = useState<string[]>([]);
@@ -278,7 +280,17 @@ export function NavBar() {
           >
             {mapMode === '2d' ? '3D' : '2D'}
           </button>
-          <span className="navbar-label">Mag</span>
+          {mapMode === '3d' && (
+            <>
+              <span className="navbar-label">Flat</span>
+              <input type="range" min={0} max={1} step={0.05} value={flattenAmount}
+                onChange={e => setFlattenAmount(parseFloat(e.target.value))}
+                style={{ width: '50px', accentColor: 'var(--chrome-accent)' }}
+                title={`Flatten: ${Math.round(flattenAmount * 100)}%`}
+              />
+            </>
+          )}
+          <span className="navbar-label">Mag {magLimit < 12 ? magLimit.toFixed(1) : 'All'}</span>
           <input type="range" min={1} max={12} step={0.5} value={magLimit}
             onChange={e => setMagLimit(parseFloat(e.target.value))}
             style={{ width: '60px', accentColor: 'var(--chrome-accent)' }}
@@ -297,6 +309,16 @@ export function NavBar() {
               {o.label}
             </button>
           ))}
+        </div>
+
+        <div className="navbar-sep" />
+
+        {/* Zoom Presets */}
+        <div className="navbar-section">
+          <span className="navbar-label">Go to</span>
+          <button className="nav-btn" onClick={() => setZoomTarget(5)} title="Solar neighborhood (5 pc)">Near</button>
+          <button className="nav-btn" onClick={() => setZoomTarget(100)} title="Local bubble (100 pc)">Local</button>
+          <button className="nav-btn" onClick={() => setZoomTarget(1000)} title="Milky Way arm (1000 pc)">Galaxy</button>
         </div>
 
         <div className="navbar-sep" />

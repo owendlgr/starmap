@@ -73,6 +73,10 @@ interface StoreState {
   // Hover tooltip (3D mode)
   hoveredStar: Star | null;
   setHoveredStar: (star: Star | null) => void;
+
+  // Flatten amount: 0.0 = full 3D, 1.0 = flat 2D
+  flattenAmount: number;
+  setFlattenAmount: (v: number) => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -155,4 +159,7 @@ export const useStore = create<StoreState>((set) => ({
 
   hoveredStar: null,
   setHoveredStar: (star) => set({ hoveredStar: star }),
+
+  flattenAmount: 0.0,
+  setFlattenAmount: (v) => set({ flattenAmount: v }),
 }));
