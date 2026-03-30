@@ -7,13 +7,8 @@ import type { ScaleUnit } from '@/lib/types';
 const KNOWN_SOURCES = [
   {
     name: 'Hipparcos Catalogue (ESA, 1997)',
-    detail: '76 named stars with measured astrometry: parallax, proper motion, BV photometry, and spectral classification. All positions are real satellite measurements with sub-milliarcsecond precision.',
+    detail: '39,000+ stars with measured astrometry from ESA Hipparcos satellite: parallax, proper motion, BV photometry, and spectral classification. All positions are real measurements with sub-milliarcsecond precision.',
     url: 'https://www.cosmos.esa.int/web/hipparcos',
-  },
-  {
-    name: 'NASA Exoplanet Archive (2026)',
-    detail: '5,600+ confirmed exoplanet host systems, 39,000+ records. Includes orbital parameters, planetary radius (R⊕), mass (M⊕), discovery method and facility, equilibrium temperature, and host star astrometry.',
-    url: 'https://exoplanetarchive.ipac.caltech.edu',
   },
 ];
 
@@ -269,9 +264,6 @@ export function NavBar() {
           <button className={`nav-btn ${showLabels ? 'on' : ''}`} onClick={() => setShowLabels(!showLabels)}>
             Labels
           </button>
-          <button className={`nav-btn ${showDepthLines ? 'on' : ''}`} onClick={() => setShowDepthLines(!showDepthLines)}>
-            Depth
-          </button>
           {/* 2D / 3D toggle */}
           <button
             className={`nav-btn ${mapMode === '2d' ? 'active' : ''}`}
@@ -337,18 +329,6 @@ export function NavBar() {
         </div>
 
         <div className="navbar-spacer" />
-
-        {/* Legend */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginRight: '0.5rem' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--chrome-muted)', fontWeight: 'bold' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--chrome-muted)', display: 'inline-block', flexShrink: 0 }} />
-            Star
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.62rem', fontFamily: 'var(--font-mono)', color: 'var(--chrome-muted)', fontWeight: 'bold' }}>
-            <span style={{ width: 9, height: 9, borderRadius: '50%', border: '1.5px solid var(--chrome-muted)', display: 'inline-block', flexShrink: 0 }} />
-            Exo Host
-          </span>
-        </div>
 
         <div className="navbar-sep" />
 

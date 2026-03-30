@@ -315,24 +315,24 @@ function StarLabels({ stars }: { stars: Star[] }) {
   const sub  = dark ? '#9a8e7e' : '#5a4e3e';
   const shad = dark ? '#0a0806' : '#f0ece0';
 
-  // Cull radius scales with zoom — closer zoom = tighter label radius
-  const cullRadius = Math.max(5, zoomTarget * 0.6);
-  // Named stars get a larger radius
-  const namedRadius = Math.max(50, zoomTarget * 3);
-
+  // Show labels based on zoom level — named stars always, HIP stars when zoomed in
   const visible = useMemo(() => {
     const result: Star[] = [];
+    // Always show named stars (non-HIP-prefix names)
     for (const s of stars) {
-      const isNamedStar = s.name && !s.name.startsWith('HIP ');
-      const threshold = isNamedStar ? namedRadius : cullRadius;
-      // Simple distance check from origin (camera target approximation)
-      if (s.dist_pc <= threshold || s.dist_pc === 0) {
+      if (s.name && !s.name.startsWith('HIP ')) {
         result.push(s);
       }
-      if (result.length >= 200) break;
     }
-    return result;
-  }, [stars, cullRadius, namedRadius]);
+    // When zoomed in close (< 30 pc), also show nearby HIP stars up to a limit
+    if (zoomTarget < 30) {
+      const hipStars = stars
+        .filter(s => s.name?.startsWith('HIP ') && s.dist_pc < zoomTarget * 2)
+        .slice(0, 100);
+      result.push(...hipStars);
+    }
+    return result.slice(0, 300);
+  }, [stars, zoomTarget]);
 
   if (!showLabels || visible.length === 0) return null;
   return (
