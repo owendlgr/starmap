@@ -111,6 +111,30 @@ export function SidePanel() {
                 Class {selectedStar.spectral || '—'}&nbsp;·&nbsp;B−V {isFinite(selectedStar.bv) ? selectedStar.bv.toFixed(2) : '—'}
               </span>
             </div>
+
+            {/* DSS Sky Survey Image */}
+            {selectedStar.ra !== 0 && selectedStar.dec !== 0 && selectedStar.dist_pc > 0 && (
+              <div style={{ marginTop: '0.6rem' }}>
+                <img
+                  src={`https://skyview.gsfc.nasa.gov/current/cgi/runquery.pl?Position=${selectedStar.ra},${selectedStar.dec}&Survey=DSS2+Red&Pixels=280&Size=0.15&Return=GIF`}
+                  alt={`Sky survey image near ${selectedStar.name}`}
+                  style={{
+                    width: '100%', height: 'auto', display: 'block',
+                    border: '1px solid var(--chrome-border)',
+                    opacity: 0.9,
+                  }}
+                  loading="lazy"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+                <div style={{
+                  fontSize: '0.58rem', fontFamily: 'var(--font-mono)',
+                  color: 'var(--chrome-muted)', marginTop: '0.25rem',
+                  fontWeight: 'bold', letterSpacing: '0.05em',
+                }}>
+                  DSS2 Red · 9&prime; field of view
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="side-panel-body">

@@ -161,7 +161,7 @@ export function NavSearch() {
         <input
           ref={inputRef}
           className="search-input"
-          placeholder="Search stars, galaxies, nebulae…"
+          placeholder="Search stars by name or HIP number…"
           value={query}
           onChange={e => search(e.target.value)}
           autoComplete="off"
