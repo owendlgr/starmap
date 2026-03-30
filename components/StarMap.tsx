@@ -295,17 +295,17 @@ function DepthLines({ stars }: { stars: Star[] }) {
     return geo;
   }, [stars]);
   if (!showDepthLines) return null;
-  const col = theme === 'dark' ? '#8a7e6e' : '#b0a898';
+  const col = theme === 'dark' ? '#9a8e7e' : '#8a7e6e';
   return (
     <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={col} transparent opacity={0.35} />
+      <lineBasicMaterial color={col} transparent opacity={0.5} />
     </lineSegments>
   );
 }
 
 // ── 2D canvas dot renderer ────────────────────────────────
-// Draws all stars as 2D dots and populates projRef each frame so the
-// DOM overlay can do accurate hit detection without any math approximation.
+// Draws all stars as 2D dots FLATTENED onto the galactic plane (Y→0).
+// This creates a true 2D projection rather than a top-down 3D view.
 function TwoDDotsCanvas({
   allStars, exoHosts,
   projRef,
@@ -315,9 +315,16 @@ function TwoDDotsCanvas({
   projRef: React.MutableRefObject<ProjEntry[]>;
 }) {
   const { camera, size } = useThree();
-  const { theme } = useStore();
+  const { theme, showConstellations } = useStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const proj = useMemo(() => new THREE.Vector3(), []);
+
+  // Build constellation lines for 2D rendering
+  const hipMap = useMemo(() => {
+    const m = new Map<number, Star>();
+    for (const s of allStars) if (s.hip) m.set(s.hip, s);
+    return m;
+  }, [allStars]);
 
   useFrame(() => {
     const c = canvasRef.current;
@@ -329,22 +336,69 @@ function TwoDDotsCanvas({
 
     const entries: ProjEntry[] = [];
 
+    // Helper: project star position flattened to Y=0 (galactic plane)
+    const project2D = (x: number, z: number): [number, number] => {
+      proj.set(x, 0, z).project(camera);
+      return [
+        (proj.x * 0.5 + 0.5) * size.width,
+        (1 - (proj.y * 0.5 + 0.5)) * size.height,
+      ];
+    };
+
+    // Draw constellation lines first (behind stars)
+    if (showConstellations) {
+      ctx.strokeStyle = dark ? 'rgba(212, 188, 122, 0.6)' : 'rgba(74, 62, 46, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      // Import constellation pairs inline to avoid circular dependency
+      const PAIRS: [number, number][] = [
+        [27989,25336],[27989,26311],[25336,26311],[26311,26727],[26727,24436],[25336,24436],[27366,26727],
+        [54061,53910],[53910,58001],[58001,59774],[59774,62956],[62956,65378],[65378,67301],
+        [746,4427],[4427,6686],[6686,8886],[4427,4436],
+        [36850,37826],[36850,31592],[37826,31681],
+        [21421,25428],
+        [32349,30324],[32349,33579],[33579,34444],
+        [80763,85927],[85927,86670],
+        [68702,71683],[68702,68933],
+        [677,5447],[5447,9640],
+        [677,1067],[1067,113963],
+        [61941,65474],
+        [106278,109074],
+        [102098,95947],[95947,102488],
+        [97649,97278],
+        [15863,14576],
+        [90185,89931],[92855,90185],
+        [69673,72105],[69673,69974],
+        [60718,62434],
+      ];
+      for (const [h1, h2] of PAIRS) {
+        const a = hipMap.get(h1);
+        const b = hipMap.get(h2);
+        if (!a || !b) continue;
+        const [ax, ay] = project2D(a.x, a.z);
+        const [bx, by] = project2D(b.x, b.z);
+        if (ax < -50 || ax > size.width+50 || ay < -50 || ay > size.height+50) continue;
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+      }
+      ctx.stroke();
+    }
+
+    // Draw stars — flattened Y to 0
     const draw = (stars: Star[], ring: boolean) => {
       for (const s of stars) {
-        proj.set(s.x, s.y, s.z).project(camera);
-        const sx = (proj.x * 0.5 + 0.5) * size.width;
-        const sy = (1 - (proj.y * 0.5 + 0.5)) * size.height;
+        const [sx, sy] = project2D(s.x, s.z);
         if (sx < -20 || sx > size.width + 20 || sy < -20 || sy > size.height + 20) continue;
         entries.push({ sx, sy, star: s });
-        const r = Math.max(1.5, Math.min(5, 4.0 - s.mag * 0.25));
+        const r = Math.max(2, Math.min(6, 5.0 - s.mag * 0.3));
         ctx.beginPath();
-        ctx.arc(sx, sy, r + (ring ? 1.5 : 0), 0, Math.PI * 2);
+        ctx.arc(sx, sy, r + (ring ? 2 : 0), 0, Math.PI * 2);
         if (ring) {
-          ctx.strokeStyle = dark ? 'rgba(232,220,200,0.7)' : 'rgba(26,18,8,0.65)';
-          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = dark ? 'rgba(232,220,200,0.85)' : 'rgba(26,18,8,0.75)';
+          ctx.lineWidth = 1.5;
           ctx.stroke();
         } else {
-          ctx.fillStyle = dark ? 'rgba(220,210,185,0.85)' : 'rgba(26,18,8,0.8)';
+          ctx.fillStyle = dark ? 'rgba(220,210,185,0.9)' : 'rgba(26,18,8,0.85)';
           ctx.fill();
         }
       }
@@ -352,14 +406,15 @@ function TwoDDotsCanvas({
     draw(allStars, false);
     draw(exoHosts, true);
 
-    // Sol
-    proj.set(0, 0, 0).project(camera);
-    const sx = (proj.x * 0.5 + 0.5) * size.width;
-    const sy = (1 - (proj.y * 0.5 + 0.5)) * size.height;
-    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2);
-    ctx.fillStyle = dark ? '#c8b898' : '#3d2e1e'; ctx.fill();
+    // Sol marker
+    const [solX, solY] = project2D(0, 0);
+    ctx.beginPath(); ctx.arc(solX, solY, 6, 0, Math.PI * 2);
+    ctx.fillStyle = dark ? '#e8d8a8' : '#2a1e0e'; ctx.fill();
+    // Sol label
+    ctx.font = 'bold 10px Georgia, serif';
+    ctx.fillStyle = dark ? '#e8e0d0' : '#1a1208';
+    ctx.fillText('Sol', solX + 9, solY + 4);
 
-    // Update shared ref — DOM overlay reads this on next mousemove
     projRef.current = entries;
   });
 
