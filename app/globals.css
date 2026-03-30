@@ -9,17 +9,17 @@
   --muted:        #7a6e5e;
   --divider-map:  rgba(26, 18, 8, 0.12);
 
-  /* UI chrome — light mode: light panels with dark text */
-  --chrome-bg:    rgba(245, 240, 230, 0.98);
-  --chrome-border: rgba(26, 18, 8, 0.25);
-  --chrome-text:  #1a1208;
-  --chrome-muted: #4a3e2e;
-  --chrome-accent: #7a5510;
-  --chrome-hover: rgba(26, 18, 8, 0.08);
-  --chrome-btn-border: rgba(26, 18, 8, 0.3);
-  --chrome-btn-active-bg: rgba(139, 105, 20, 0.15);
-  --chrome-btn-active-border: rgba(139, 105, 20, 0.7);
-  --chrome-scrollbar: rgba(26, 18, 8, 0.3);
+  /* UI chrome — light mode: DARK panels on light map background (inverted) */
+  --chrome-bg:    rgba(20, 16, 10, 0.92);
+  --chrome-border: rgba(200, 180, 140, 0.3);
+  --chrome-text:  #f0e8d8;
+  --chrome-muted: #b0a48e;
+  --chrome-accent: #dab86a;
+  --chrome-hover: rgba(200, 180, 140, 0.12);
+  --chrome-btn-border: rgba(200, 180, 140, 0.3);
+  --chrome-btn-active-bg: rgba(200, 169, 106, 0.15);
+  --chrome-btn-active-border: rgba(200, 169, 106, 0.7);
+  --chrome-scrollbar: rgba(200, 180, 140, 0.3);
 
   --side-w:       440px;
   --navbar-h:     52px;
@@ -35,17 +35,17 @@
   --muted:       #7a6e5e;
   --divider-map: rgba(232, 224, 208, 0.08);
 
-  /* UI chrome — dark mode: dark panels with light text */
-  --chrome-bg:    rgba(10, 8, 5, 0.98);
-  --chrome-border: rgba(200, 180, 140, 0.35);
-  --chrome-text:  #f0e8d8;
-  --chrome-muted: #b0a48e;
-  --chrome-accent: #dab86a;
-  --chrome-hover: rgba(200, 180, 140, 0.15);
-  --chrome-btn-border: rgba(200, 180, 140, 0.35);
-  --chrome-btn-active-bg: rgba(200, 169, 106, 0.15);
-  --chrome-btn-active-border: rgba(200, 169, 106, 0.75);
-  --chrome-scrollbar: rgba(200, 180, 140, 0.35);
+  /* UI chrome — dark mode: LIGHT panels on dark map background (inverted) */
+  --chrome-bg:    rgba(240, 236, 224, 0.93);
+  --chrome-border: rgba(26, 18, 8, 0.2);
+  --chrome-text:  #1a1208;
+  --chrome-muted: #4a3e2e;
+  --chrome-accent: #7a5510;
+  --chrome-hover: rgba(26, 18, 8, 0.06);
+  --chrome-btn-border: rgba(26, 18, 8, 0.25);
+  --chrome-btn-active-bg: rgba(122, 85, 16, 0.12);
+  --chrome-btn-active-border: rgba(122, 85, 16, 0.6);
+  --chrome-scrollbar: rgba(26, 18, 8, 0.25);
 }
 
 html, body {

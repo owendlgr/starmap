@@ -197,8 +197,8 @@ const SCALE_OPTIONS: { value: ScaleUnit; label: string }[] = [
 
 export function NavBar() {
   const {
-    showHipparcos, showExoplanets, showGaia, showConstellations,
-    setShowHipparcos, setShowExoplanets, setShowGaia, setShowConstellations,
+    showHipparcos, showGaia, showConstellations,
+    setShowHipparcos, setShowGaia, setShowConstellations,
     scaleUnit, setScaleUnit,
     mode, setMode,
     showLabels, setShowLabels,
@@ -208,7 +208,6 @@ export function NavBar() {
     showAbout, setShowAbout,
     stars,
     triggerCameraReset,
-    exoHostCount,
     theme, setTheme,
     mapMode, setMapMode,
   } = useStore();
@@ -249,10 +248,7 @@ export function NavBar() {
         <div className="navbar-section">
           <span className="navbar-label">Layers</span>
           <button className={`nav-btn ${showHipparcos ? 'on' : ''}`} onClick={() => setShowHipparcos(!showHipparcos)}>
-            ★ Hipparcos
-          </button>
-          <button className={`nav-btn ${showExoplanets ? 'on' : ''}`} onClick={() => setShowExoplanets(!showExoplanets)}>
-            ◎ Exo Hosts
+            ★ Stars
           </button>
           <button className={`nav-btn ${showGaia ? 'on' : ''}`} onClick={() => setShowGaia(!showGaia)}>
             · Gaia DR3
@@ -329,7 +325,6 @@ export function NavBar() {
 
         <span className="nav-stat">
           {stars.length.toLocaleString()} stars
-          {exoHostCount > 0 && ` · ${exoHostCount.toLocaleString()} exo`}
         </span>
 
         <div className="navbar-sep" />

@@ -202,8 +202,6 @@ export function SidePanel() {
               </div>
             </Section>
 
-            {/* Exoplanet cross-reference */}
-            <PlanetsSection starName={selectedStar.name} />
 
             {/* Measure separation */}
             {measureTarget && (

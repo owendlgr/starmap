@@ -145,28 +145,20 @@ export function StarField({ stars, onSelect }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gl]);
 
-  // Adjust base star color brightness for theme via per-vertex colors
-  // (spectral colors are already baked into geometry; theme just adjusts intensity)
+  // Set star colors: black dots on light mode, white dots on dark mode
   useEffect(() => {
     const dark = theme === 'dark';
-    // In light mode, darken star colors so they show on bright background
-    if (!dark && geometry.attributes.aStarColor) {
-      const colors = geometry.attributes.aStarColor as THREE.BufferAttribute;
-      filtered.forEach((s, i) => {
-        const [cr, cg, cb] = spectralToColor(s.spectral, s.bv);
-        // Invert/darken for light mode
-        colors.setXYZ(i, cr * 0.12, cg * 0.09, cb * 0.05);
-      });
-      colors.needsUpdate = true;
-    } else if (dark && geometry.attributes.aStarColor) {
-      const colors = geometry.attributes.aStarColor as THREE.BufferAttribute;
-      filtered.forEach((s, i) => {
-        const [cr, cg, cb] = spectralToColor(s.spectral, s.bv);
-        colors.setXYZ(i, cr, cg, cb);
-      });
-      colors.needsUpdate = true;
+    if (!geometry.attributes.aStarColor) return;
+    const colors = geometry.attributes.aStarColor as THREE.BufferAttribute;
+    const [r, g, b] = dark ? [0.92, 0.88, 0.82] : [0.08, 0.06, 0.04];
+    for (let i = 0; i < filtered.length; i++) {
+      colors.setXYZ(i, r, g, b);
     }
-  }, [theme, geometry, filtered]);
+    colors.needsUpdate = true;
+    // Also switch blending mode: additive for dark (glow), normal for light (solid)
+    material.blending = dark ? THREE.AdditiveBlending : THREE.NormalBlending;
+    material.needsUpdate = true;
+  }, [theme, geometry, filtered, material]);
 
   const handleClick = useCallback((e: THREE.Event) => {
     const ev = e as unknown as { intersections: { index: number }[] };

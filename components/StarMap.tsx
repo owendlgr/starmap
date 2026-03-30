@@ -5,7 +5,6 @@ import { OrbitControls, Html } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { StarField } from './StarField';
-import { ExoplanetHostField } from './ExoplanetHostField';
 import { GaiaField } from './GaiaField';
 import { ConstellationLines } from './ConstellationLines';
 import { SelectionMarker, MeasureLine } from './SelectionMarker';
@@ -33,30 +32,6 @@ function DataLoader() {
   return null;
 }
 
-function ExoplanetLoader({ onLoad }: { onLoad: (stars: Star[]) => void }) {
-  const { setExoHostCount, stars } = useStore();
-  const loadedRef = useRef(false);
-  // Defer exoplanet loading until main stars have loaded to avoid bandwidth contention
-  useEffect(() => {
-    if (loadedRef.current || stars.length === 0) return;
-    loadedRef.current = true;
-    const load = () => {
-      fetch('/api/exoplanet-stars')
-        .then(r => r.json())
-        .then((d: { stars: Star[] }) => {
-          if (d.stars?.length) { onLoad(d.stars); setExoHostCount(d.stars.length); }
-        })
-        .catch(() => {});
-    };
-    if (typeof requestIdleCallback !== 'undefined') {
-      requestIdleCallback(load, { timeout: 2000 });
-    } else {
-      setTimeout(load, 100);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stars.length]);
-  return null;
-}
 
 // ── Camera ────────────────────────────────────────────────
 function CameraManager() {
@@ -307,11 +282,10 @@ function DepthLines({ stars }: { stars: Star[] }) {
 // Draws all stars as 2D dots FLATTENED onto the galactic plane (Y→0).
 // This creates a true 2D projection rather than a top-down 3D view.
 function TwoDDotsCanvas({
-  allStars, exoHosts,
+  allStars,
   projRef,
 }: {
   allStars: Star[];
-  exoHosts: Star[];
   projRef: React.MutableRefObject<ProjEntry[]>;
 }) {
   const { camera, size } = useThree();
@@ -404,7 +378,6 @@ function TwoDDotsCanvas({
       }
     };
     draw(allStars, false);
-    draw(exoHosts, true);
 
     // Sol marker
     const [solX, solY] = project2D(0, 0);
@@ -462,7 +435,7 @@ function DeferredBloom() {
 }
 
 // ── 3D scene ──────────────────────────────────────────────
-function Scene({ exoHosts }: { exoHosts: Star[] }) {
+function Scene() {
   const { stars, selectedStar, measureTarget, setSelected, theme } = useStore();
   const dark = theme === 'dark';
   const bg = dark ? '#0a0806' : '#f0ece0';
@@ -475,7 +448,6 @@ function Scene({ exoHosts }: { exoHosts: Star[] }) {
       <SceneGrid />
       <SolarMarker />
       <StarField stars={stars} onSelect={setSelected} />
-      {exoHosts.length > 0 && <ExoplanetHostField stars={exoHosts} />}
       <GaiaField />
       <ConstellationLines stars={stars} />
       <StarLabels stars={stars} />
@@ -483,7 +455,6 @@ function Scene({ exoHosts }: { exoHosts: Star[] }) {
       {selectedStar && <SelectionMarker star={selectedStar} color="#c8a96a" />}
       {measureTarget && <SelectionMarker star={measureTarget} color="#6ab4c8" />}
       {selectedStar && measureTarget && <MeasureLine from={selectedStar} to={measureTarget} />}
-      {/* Subtle bloom for bright star glow — deferred to avoid blocking initial render */}
       {dark && <DeferredBloom />}
     </>
   );
@@ -491,10 +462,8 @@ function Scene({ exoHosts }: { exoHosts: Star[] }) {
 
 // ── 2D scene ──────────────────────────────────────────────
 function Scene2D({
-  exoHosts,
   projRef,
 }: {
-  exoHosts: Star[];
   projRef: React.MutableRefObject<ProjEntry[]>;
 }) {
   const { stars, theme } = useStore();
@@ -505,14 +474,13 @@ function Scene2D({
       <CameraManager />
       <RaycasterScaler />
       <GaiaField />
-      <TwoDDotsCanvas allStars={stars} exoHosts={exoHosts} projRef={projRef} />
+      <TwoDDotsCanvas allStars={stars} projRef={projRef} />
     </>
   );
 }
 
 // ── Root export ───────────────────────────────────────────
 export function StarMap() {
-  const [exoHosts, setExoHosts] = useState<Star[]>([]);
   const { theme, mapMode, setSelected, mode, setMeasureTarget } = useStore();
   const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
 
@@ -562,13 +530,14 @@ export function StarMap() {
   }, [mapMode, nearby2D, handleSelect2D]);
 
   const dark = theme === 'dark';
-  const panelBg  = dark ? 'rgba(10,8,5,0.97)'    : 'rgba(240,236,224,0.97)';
-  const border   = dark ? 'rgba(200,180,140,0.3)' : 'rgba(26,18,8,0.2)';
-  const hdrColor = dark ? '#9a8e7e'               : '#7a6e5e';
-  const namColor = dark ? '#e8e0d0'               : '#1a1208';
-  const metColor = dark ? '#9a8e7e'               : '#7a6e5e';
-  const rowBdr   = dark ? 'rgba(200,180,140,0.08)': 'rgba(26,18,8,0.07)';
-  const rowHov   = dark ? 'rgba(200,180,140,0.08)': 'rgba(26,18,8,0.06)';
+  // Inverted: dark tooltip on light bg, light tooltip on dark bg
+  const panelBg  = dark ? 'rgba(240,236,224,0.95)' : 'rgba(20,16,10,0.95)';
+  const border   = dark ? 'rgba(26,18,8,0.2)'      : 'rgba(200,180,140,0.3)';
+  const hdrColor = dark ? '#5a4e3e'                : '#b0a48e';
+  const namColor = dark ? '#1a1208'                : '#f0e8d8';
+  const metColor = dark ? '#5a4e3e'                : '#b0a48e';
+  const rowBdr   = dark ? 'rgba(26,18,8,0.1)'     : 'rgba(200,180,140,0.12)';
+  const rowHov   = dark ? 'rgba(26,18,8,0.08)'    : 'rgba(200,180,140,0.1)';
 
   return (
     <div ref={rootRef}
@@ -578,7 +547,6 @@ export function StarMap() {
       onMouseLeave={() => { if (mapMode === '2d') setHovered2D(null); }}
     >
       <DataLoader />
-      <ExoplanetLoader onLoad={setExoHosts} />
       <Canvas
         camera={{ fov: 60, near: 0.001, far: 200000 }}
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}
@@ -586,8 +554,8 @@ export function StarMap() {
       >
         <Suspense fallback={null}>
           {mapMode === '3d'
-            ? <Scene exoHosts={exoHosts} />
-            : <Scene2D exoHosts={exoHosts} projRef={projRef} />
+            ? <Scene />
+            : <Scene2D projRef={projRef} />
           }
         </Suspense>
       </Canvas>
