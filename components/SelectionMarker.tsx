@@ -7,9 +7,10 @@ import type { Star } from '@/lib/types';
 interface Props {
   star: Star;
   color?: string;
+  flattenAmount?: number;
 }
 
-export function SelectionMarker({ star, color = '#c8a96a' }: Props) {
+export function SelectionMarker({ star, color = '#c8a96a', flattenAmount = 0 }: Props) {
   const ref = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const t = useRef(0);
@@ -26,7 +27,7 @@ export function SelectionMarker({ star, color = '#c8a96a' }: Props) {
   });
 
   return (
-    <group position={[star.x, star.y, star.z]}>
+    <group position={[star.x, star.y * (1 - flattenAmount), star.z]}>
       {/* Outer glow ring */}
       <mesh ref={glowRef} rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.75, 1.0, 48]} />
@@ -62,13 +63,14 @@ export function SelectionMarker({ star, color = '#c8a96a' }: Props) {
 interface MeasureLineProps {
   from: Star;
   to: Star;
+  flattenAmount?: number;
 }
 
-export function MeasureLine({ from, to }: MeasureLineProps) {
+export function MeasureLine({ from, to, flattenAmount = 0 }: MeasureLineProps) {
   // Memoize Float32Array to avoid allocation on every render
   const pts = useMemo(
-    () => new Float32Array([from.x, from.y, from.z, to.x, to.y, to.z]),
-    [from.x, from.y, from.z, to.x, to.y, to.z]
+    () => new Float32Array([from.x, from.y * (1 - flattenAmount), from.z, to.x, to.y * (1 - flattenAmount), to.z]),
+    [from.x, from.y, from.z, to.x, to.y, to.z, flattenAmount]
   );
   return (
     <line>

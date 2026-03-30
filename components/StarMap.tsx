@@ -22,7 +22,7 @@ type ProjEntry = { sx: number; sy: number; star: Star };
 // ── Data loaders ──────────────────────────────────────────
 // Priority 1: Load main stars immediately (tiny ~18KB)
 // Priority 2: Defer exoplanet hosts until after main stars render
-function DataLoader() {
+function DataLoader({ onLoaded }: { onLoaded: () => void }) {
   const { addStars } = useStore();
   useEffect(() => {
     fetch('/data/stars_catalog.json')
@@ -33,9 +33,10 @@ function DataLoader() {
       .then((d: StarChunk) => {
         console.log(`[StarMap] Loaded ${d.stars.length} stars from verified catalog`);
         addStars('verified', d.stars);
+        onLoaded();
       })
       .catch(err => console.error('[StarMap] Failed to load star data:', err));
-  }, [addStars]);
+  }, [addStars, onLoaded]);
   return null;
 }
 
@@ -308,7 +309,7 @@ function CameraManager() {
 // Named stars always shown if within 500 pc of camera; HIP-only stars within 30 pc.
 // Max 200 labels at a time to keep DOM light.
 function StarLabels({ stars }: { stars: Star[] }) {
-  const { showLabels, scaleUnit, theme, zoomTarget } = useStore();
+  const { showLabels, scaleUnit, theme, zoomTarget, flattenAmount } = useStore();
   const dark = theme === 'dark';
   const txt  = dark ? '#e8e0d0' : '#1a1208';
   const sub  = dark ? '#9a8e7e' : '#5a4e3e';
@@ -337,7 +338,7 @@ function StarLabels({ stars }: { stars: Star[] }) {
   return (
     <>
       {visible.map(s => (
-        <Html key={s.id} distanceFactor={10} position={[s.x+0.15, s.y+0.15, s.z]}
+        <Html key={s.id} distanceFactor={10} position={[s.x+0.15, s.y * (1 - flattenAmount)+0.15, s.z]}
           style={{ zIndex:5, pointerEvents:'none' }} zIndexRange={[10,0]}>
           <div style={{ fontFamily:'Georgia,serif', fontWeight:'bold', color:txt,
             whiteSpace:'nowrap', lineHeight:1.3, pointerEvents:'none',
@@ -575,10 +576,10 @@ function DeferredBloom() {
 
 // ── 3D hover tooltip ─────────────────────────────────────
 function HoverTooltip() {
-  const { hoveredStar, selectedStar } = useStore();
+  const { hoveredStar, selectedStar, flattenAmount } = useStore();
   if (!hoveredStar || selectedStar) return null;
   return (
-    <Html position={[hoveredStar.x, hoveredStar.y + 0.3, hoveredStar.z]}
+    <Html position={[hoveredStar.x, hoveredStar.y * (1 - flattenAmount) + 0.3, hoveredStar.z]}
       distanceFactor={8} style={{ pointerEvents: 'none', zIndex: 20 }} zIndexRange={[20, 0]}>
       <div style={{ background: 'var(--chrome-bg)', border: '1px solid var(--chrome-border)',
         padding: '0.3rem 0.6rem', fontSize: '0.75rem', color: 'var(--chrome-text)',
@@ -594,7 +595,7 @@ function HoverTooltip() {
 
 // ── 3D scene ──────────────────────────────────────────────
 function Scene() {
-  const { stars, selectedStar, measureTarget, setSelected, theme } = useStore();
+  const { stars, selectedStar, measureTarget, setSelected, theme, flattenAmount } = useStore();
   const dark = theme === 'dark';
   const bg = dark ? '#0a0806' : '#f0ece0';
   return (
@@ -609,9 +610,9 @@ function Scene() {
       <ConstellationLines stars={stars} />
       <StarLabels stars={stars} />
       <HoverTooltip />
-      {selectedStar && <SelectionMarker star={selectedStar} color="#c8a96a" />}
-      {measureTarget && <SelectionMarker star={measureTarget} color="#6ab4c8" />}
-      {selectedStar && measureTarget && <MeasureLine from={selectedStar} to={measureTarget} />}
+      {selectedStar && <SelectionMarker star={selectedStar} color="#c8a96a" flattenAmount={flattenAmount} />}
+      {measureTarget && <SelectionMarker star={measureTarget} color="#6ab4c8" flattenAmount={flattenAmount} />}
+      {selectedStar && measureTarget && <MeasureLine from={selectedStar} to={measureTarget} flattenAmount={flattenAmount} />}
       {dark && <DeferredBloom />}
     </>
   );
@@ -638,8 +639,17 @@ function Scene2D({
 
 // ── Root export ───────────────────────────────────────────
 export function StarMap() {
-  const { theme, mapMode, setSelected, mode, setMeasureTarget, setZoomTarget, triggerCameraReset } = useStore();
+  const { theme, mapMode, setSelected, mode, setMeasureTarget, setZoomTarget, triggerCameraReset, hoveredStar } = useStore();
   const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
+
+  // Loading state
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [loadingFading, setLoadingFading] = useState(false);
+  const handleDataLoaded = useCallback(() => {
+    setDataLoaded(true);
+    // Start fade-out after a brief delay so the transition is visible
+    setTimeout(() => setLoadingFading(true), 200);
+  }, []);
 
   // Keyboard navigation: +/- zoom, Escape deselect, Home reset
   useEffect(() => {
@@ -726,12 +736,32 @@ export function StarMap() {
 
   return (
     <div ref={rootRef}
-      style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+      style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, cursor: hoveredStar ? 'pointer' : 'default' }}
       onMouseMove={handleMouseMove2D}
       onClick={handleClick2D}
       onMouseLeave={() => { if (mapMode === '2d') setHovered2D(null); }}
     >
-      <DataLoader />
+      <DataLoader onLoaded={handleDataLoaded} />
+
+      {/* Loading overlay */}
+      {!loadingFading && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 100,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: theme === 'dark' ? '#0a0806' : '#f0ece0',
+          opacity: dataLoaded ? 0 : 1,
+          transition: 'opacity 0.5s ease',
+          pointerEvents: dataLoaded ? 'none' : 'auto',
+        }}>
+          <div style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            color: theme === 'dark' ? '#9a8e7e' : '#7a6e5e',
+          }}>
+            Loading stellar catalog...
+          </div>
+        </div>
+      )}
       <Canvas
         camera={{ fov: 60, near: 0.001, far: 200000 }}
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}

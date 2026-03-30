@@ -31,13 +31,16 @@ attribute float aMag;
 varying float vAlpha;
 uniform float uPixelRatio;
 uniform float uMagLimit;
+uniform float uFlatten;
 void main() {
   if (aMag > uMagLimit) {
     gl_PointSize = 0.0;
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
     return;
   }
-  vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+  vec3 pos = position;
+  pos.y = mix(pos.y, 0.0, uFlatten);
+  vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
   float camDist = length(mvPos.xyz);
 
   // Smooth distance attenuation
@@ -143,7 +146,7 @@ function GaiaChunk({ chunk, material }: { chunk: ChunkData; material: THREE.Shad
 // ── Main GaiaField component ──────────────────────────────
 export function GaiaField() {
   const { gl } = useThree();
-  const { theme, showGaia, magLimit } = useStore();
+  const { theme, showGaia, magLimit, flattenAmount } = useStore();
   const [chunks, setChunks] = useState<ChunkData[]>([]);
   const loadedRef = useRef(false);
 
@@ -157,6 +160,7 @@ export function GaiaField() {
         uPixelRatio: { value: gl.getPixelRatio() },
         uColor:      { value: new THREE.Color(dark ? 0.82 : 0.12, dark ? 0.77 : 0.08, dark ? 0.67 : 0.04) },
         uMagLimit:   { value: 12.0 },
+        uFlatten:    { value: 0.0 },
       },
       transparent: true,
       depthWrite: false,
@@ -175,6 +179,10 @@ export function GaiaField() {
   useEffect(() => {
     material.uniforms.uMagLimit.value = magLimit;
   }, [magLimit, material]);
+
+  useEffect(() => {
+    material.uniforms.uFlatten.value = flattenAmount;
+  }, [flattenAmount, material]);
 
   // Load chunks progressively: 2 at a time to avoid saturating bandwidth
   // and blocking higher-priority resources (main stars, exoplanets).
