@@ -91,7 +91,7 @@ export const PLANETS: PlanetData[] = [
         orbitalPeriod: 27.32, mass: 734.8, eccentricity: 0.0549, inclination: 5.145,
       },
     ],
-    texture: 'earth_day.jpg',
+    texture: 'earth_daymap.jpg',
     color: '#4a82b4',
     orbitalElements: {
       semiMajorAxis: 1.000,

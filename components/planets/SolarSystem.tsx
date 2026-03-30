@@ -17,9 +17,9 @@ export function scaledDistance(distanceAU: number): number {
   return Math.log10(distanceAU * 100 + 1) * 3;
 }
 
-/** Logarithmic radius scaling for planet sizes */
+/** Power-law radius scaling for realistic relative planet sizes */
 export function scaledRadius(radiusKm: number): number {
-  return Math.log10(radiusKm / 1000 + 1) * 0.4;
+  return Math.pow(radiusKm / 1000, 0.4) * 0.3;
 }
 
 /** Convert AU position to scene coordinates using logarithmic scaling */
@@ -47,7 +47,18 @@ function CameraController() {
       if (planet) {
         const dist = scaledDistance(planet.distanceAU);
         const r = scaledRadius(planet.radius);
-        const offset = r * 6 + 2;
+        // Fly-to distance varies by planet type for better framing
+        let zoomMultiplier = 5;
+        if (planet.id === 'mercury' || planet.id === 'venus') {
+          zoomMultiplier = 4;
+        } else if (planet.id === 'earth' || planet.id === 'mars') {
+          zoomMultiplier = 5;
+        } else if (planet.id === 'jupiter' || planet.id === 'saturn') {
+          zoomMultiplier = 8;
+        } else if (planet.id === 'uranus' || planet.id === 'neptune') {
+          zoomMultiplier = 6;
+        }
+        const offset = r * zoomMultiplier + 2;
         const dest = new THREE.Vector3(dist + offset, offset * 0.5, offset * 0.4);
 
         if (!targetPos.current || !targetPos.current.equals(dest)) {
@@ -94,6 +105,7 @@ function OrbitingPlanet({ planet }: { planet: PlanetData }) {
   return (
     <group ref={groupRef} position={planet.orbitalElements ? [0, 0, 0] : [fallbackDist, 0, 0]}>
       <PlanetMesh planet={planet} />
+      {/* Show moons automatically when planet is selected; showMoons toggle still respected */}
       {showMoons && isSelected && planet.moons.length > 0 && (
         <MoonOrbit planet={planet} />
       )}
@@ -113,11 +125,22 @@ function Sun() {
   });
 
   return (
-    <mesh ref={meshRef}>
-      <sphereGeometry args={[1.2, 32, 32]} />
-      <meshBasicMaterial color="#fff5e0" />
-      <pointLight intensity={3} distance={200} decay={0.5} color="#fff5e0" />
-    </mesh>
+    <group>
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[1.2, 32, 32]} />
+        <meshBasicMaterial color="#FDB813" />
+      </mesh>
+      {/* Emissive glow layer */}
+      <mesh>
+        <sphereGeometry args={[1.35, 32, 32]} />
+        <meshBasicMaterial color="#FDB813" transparent opacity={0.15} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[1.6, 32, 32]} />
+        <meshBasicMaterial color="#FDB813" transparent opacity={0.05} />
+      </mesh>
+      <pointLight intensity={5} distance={300} decay={0.4} color="#FDB813" />
+    </group>
   );
 }
 

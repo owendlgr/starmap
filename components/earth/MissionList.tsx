@@ -71,51 +71,43 @@ function countryFlag(code: string): string {
   }
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const style: React.CSSProperties = {
-    display: 'inline-block',
-    padding: '1px 6px',
-    borderRadius: '3px',
-    fontSize: '0.58rem',
-    fontFamily: 'var(--font-mono)',
-    fontWeight: 700,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    flexShrink: 0,
-  };
-
+function getStatusAbbrev(status: string): { label: string; bg: string; color: string } {
   const normalized = status.toLowerCase();
+  if (normalized.includes('partial')) {
+    return { label: 'PART', bg: 'rgba(243, 156, 18, 0.15)', color: '#f39c12' };
+  }
   if (normalized.includes('success')) {
-    return (
-      <span style={{ ...style, background: 'rgba(46, 204, 113, 0.15)', color: '#2ecc71' }}>
-        Success
-      </span>
-    );
+    return { label: 'OK', bg: 'rgba(46, 204, 113, 0.15)', color: '#2ecc71' };
   }
   if (normalized.includes('fail')) {
-    return (
-      <span style={{ ...style, background: 'rgba(231, 76, 60, 0.15)', color: '#e74c3c' }}>
-        Failed
-      </span>
-    );
+    return { label: 'FAIL', bg: 'rgba(231, 76, 60, 0.15)', color: '#e74c3c' };
   }
-  if (normalized.includes('partial')) {
-    return (
-      <span style={{ ...style, background: 'rgba(243, 156, 18, 0.15)', color: '#f39c12' }}>
-        Partial
-      </span>
-    );
+  if (normalized.includes('go') || normalized.includes('tbd') || normalized.includes('tbc') || normalized.includes('to be determined')) {
+    return { label: 'TBD', bg: 'rgba(52, 152, 219, 0.15)', color: '#3498db' };
   }
-  if (normalized.includes('go') || normalized.includes('tbd') || normalized.includes('tbc')) {
-    return (
-      <span style={{ ...style, background: 'rgba(52, 152, 219, 0.15)', color: '#3498db' }}>
-        Upcoming
-      </span>
-    );
-  }
+  return { label: status.length > 6 ? status.slice(0, 6) : status, bg: 'rgba(136, 136, 160, 0.15)', color: '#8888a0' };
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const { label, bg, color } = getStatusAbbrev(status);
   return (
-    <span style={{ ...style, background: 'rgba(136, 136, 160, 0.15)', color: '#8888a0' }}>
-      {status.length > 10 ? status.slice(0, 10) : status}
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '1px 6px',
+        borderRadius: '3px',
+        fontSize: '0.58rem',
+        fontFamily: 'var(--font-mono)',
+        fontWeight: 700,
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
+        background: bg,
+        color: color,
+      }}
+    >
+      {label}
     </span>
   );
 }

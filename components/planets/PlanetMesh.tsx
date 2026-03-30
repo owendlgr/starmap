@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback } from 'react';
-import { useFrame, ThreeEvent } from '@react-three/fiber';
+import { useFrame, ThreeEvent, useLoader } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { usePlanetStore } from '@/lib/stores/planetStore';
@@ -10,6 +10,87 @@ import type { PlanetData } from '@/lib/types';
 
 interface PlanetMeshProps {
   planet: PlanetData;
+}
+
+/** Inner component that loads the texture via useLoader (throws on failure, caught by boundary) */
+function TexturedPlanetSphere({ planet, displayRadius, isSelected, hovered, meshRef, handleClick, handlePointerOver, handlePointerOut }: {
+  planet: PlanetData;
+  displayRadius: number;
+  isSelected: boolean;
+  hovered: boolean;
+  meshRef: React.RefObject<THREE.Mesh>;
+  handleClick: (e: ThreeEvent<MouseEvent>) => void;
+  handlePointerOver: (e: ThreeEvent<PointerEvent>) => void;
+  handlePointerOut: () => void;
+}) {
+  const texture = useLoader(THREE.TextureLoader, '/textures/' + planet.texture);
+
+  return (
+    <mesh
+      ref={meshRef}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+      rotation={[0, 0, (planet.axialTilt * Math.PI) / 180]}
+      scale={[displayRadius, displayRadius, displayRadius]}
+    >
+      <sphereGeometry args={[1, 32, 32]} />
+      <meshStandardMaterial
+        map={texture}
+        roughness={0.7}
+        metalness={0.1}
+        emissive={hovered || isSelected ? planet.color : '#000000'}
+        emissiveIntensity={hovered ? 0.3 : isSelected ? 0.15 : 0}
+      />
+    </mesh>
+  );
+}
+
+/** Fallback sphere with solid color (used when texture fails to load) */
+function FallbackPlanetSphere({ planet, displayRadius, isSelected, hovered, meshRef, handleClick, handlePointerOver, handlePointerOut }: {
+  planet: PlanetData;
+  displayRadius: number;
+  isSelected: boolean;
+  hovered: boolean;
+  meshRef: React.RefObject<THREE.Mesh>;
+  handleClick: (e: ThreeEvent<MouseEvent>) => void;
+  handlePointerOver: (e: ThreeEvent<PointerEvent>) => void;
+  handlePointerOut: () => void;
+}) {
+  return (
+    <mesh
+      ref={meshRef}
+      onClick={handleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+      rotation={[0, 0, (planet.axialTilt * Math.PI) / 180]}
+      scale={[displayRadius, displayRadius, displayRadius]}
+    >
+      <sphereGeometry args={[1, 32, 32]} />
+      <meshStandardMaterial
+        color={planet.color}
+        roughness={0.7}
+        metalness={0.1}
+        emissive={hovered || isSelected ? planet.color : '#000000'}
+        emissiveIntensity={hovered ? 0.3 : isSelected ? 0.15 : 0}
+      />
+    </mesh>
+  );
+}
+
+/** Error boundary to catch useLoader failures and render fallback */
+import { Component, type ReactNode, Suspense } from 'react';
+
+class TextureErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
 }
 
 export function PlanetMesh({ planet }: PlanetMeshProps) {
@@ -60,26 +141,27 @@ export function PlanetMesh({ planet }: PlanetMeshProps) {
 
   const displayRadius = hovered ? radius * 1.12 : radius;
 
+  const sharedProps = {
+    planet,
+    displayRadius,
+    isSelected,
+    hovered,
+    meshRef,
+    handleClick,
+    handlePointerOver,
+    handlePointerOut,
+  };
+
   return (
     <group>
-      {/* Planet sphere */}
-      <mesh
-        ref={meshRef}
-        onClick={handleClick}
-        onPointerOver={handlePointerOver}
-        onPointerOut={handlePointerOut}
-        rotation={[0, 0, (planet.axialTilt * Math.PI) / 180]}
-        scale={[displayRadius, displayRadius, displayRadius]}
+      {/* Planet sphere with texture loading + fallback */}
+      <TextureErrorBoundary
+        fallback={<FallbackPlanetSphere {...sharedProps} />}
       >
-        <sphereGeometry args={[1, 32, 32]} />
-        <meshStandardMaterial
-          color={planet.color}
-          roughness={0.7}
-          metalness={0.1}
-          emissive={hovered || isSelected ? planet.color : '#000000'}
-          emissiveIntensity={hovered ? 0.3 : isSelected ? 0.15 : 0}
-        />
-      </mesh>
+        <Suspense fallback={<FallbackPlanetSphere {...sharedProps} />}>
+          <TexturedPlanetSphere {...sharedProps} />
+        </Suspense>
+      </TextureErrorBoundary>
 
       {/* Rings for Saturn, Uranus, Neptune */}
       {planet.hasRings && (

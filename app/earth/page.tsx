@@ -24,6 +24,8 @@ export default function EarthPage() {
   const setSelectedMission = useEarthStore((s) => s.setSelectedMission);
   const showLaunchSites = useEarthStore((s) => s.showLaunchSites);
   const setShowLaunchSites = useEarthStore((s) => s.setShowLaunchSites);
+  const showTrajectories = useEarthStore((s) => s.showTrajectories);
+  const setShowTrajectories = useEarthStore((s) => s.setShowTrajectories);
   const missionFilter = useEarthStore((s) => s.missionFilter);
   const setMissionFilter = useEarthStore((s) => s.setMissionFilter);
   const loading = useEarthStore((s) => s.loading);
@@ -134,61 +136,15 @@ export default function EarthPage() {
         subtitle={`${filteredCount} LAUNCHES${missionFilter !== 'all' ? ` (${missionFilter.toUpperCase()})` : ''}`}
       />
 
-      <div className="scene-area">
-        {/* Layer panel */}
-        <div className="layer-panel">
-          <div className="layer-panel-header">
-            <span>LAYERS</span>
-          </div>
-          <div className="layer-panel-body">
-            <button className="layer-toggle" onClick={() => setShowLaunchSites(!showLaunchSites)}>
-              <span className={`layer-checkbox ${showLaunchSites ? 'checked' : ''}`}>
-                {showLaunchSites ? '\u2713' : ''}
-              </span>
-              <span>LAUNCH SITES</span>
-            </button>
-          </div>
-
-          <div className="layer-panel-header">
-            <span>AGENCY</span>
-          </div>
-          <div className="layer-panel-body">
-            <button
-              className="layer-toggle"
-              onClick={() => setMissionFilter('all')}
-            >
-              <span className={`layer-checkbox ${missionFilter === 'all' ? 'checked' : ''}`}>
-                {missionFilter === 'all' ? '\u2713' : ''}
-              </span>
-              <span>ALL ({missions.length})</span>
-            </button>
-            {agencies.map((agency) => (
-              <button
-                key={agency}
-                className="layer-toggle"
-                onClick={() => setMissionFilter(agency)}
-              >
-                <span className={`layer-checkbox ${missionFilter === agency ? 'checked' : ''}`}>
-                  {missionFilter === agency ? '\u2713' : ''}
-                </span>
-                <span>{agency.toUpperCase()}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Mission list panel (left overlay) */}
+      <div className="scene-area" style={{ display: 'flex', flexDirection: 'row' }}>
+        {/* Mission list panel (fixed left column) */}
         <div
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            bottom: 0,
             width: '280px',
             maxWidth: '40vw',
+            flexShrink: 0,
             background: 'var(--bg-secondary)',
             borderRight: '1px solid var(--border)',
-            zIndex: 20,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -253,23 +209,64 @@ export default function EarthPage() {
           </div>
         </div>
 
-        {/* Three.js Globe */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: '280px',
-            right: 0,
-            bottom: 0,
-          }}
-        >
+        {/* Canvas area (flex-grow) with layer panel floating over it */}
+        <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+          {/* Layer panel - floats over canvas */}
+          <div className="layer-panel" style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', left: 'auto', zIndex: 10 }}>
+            <div className="layer-panel-header">
+              <span>LAYERS</span>
+            </div>
+            <div className="layer-panel-body">
+              <button className="layer-toggle" onClick={() => setShowLaunchSites(!showLaunchSites)}>
+                <span className={`layer-checkbox ${showLaunchSites ? 'checked' : ''}`}>
+                  {showLaunchSites ? '\u2713' : ''}
+                </span>
+                <span>LAUNCH SITES</span>
+              </button>
+              <button className="layer-toggle" onClick={() => setShowTrajectories(!showTrajectories)}>
+                <span className={`layer-checkbox ${showTrajectories ? 'checked' : ''}`}>
+                  {showTrajectories ? '\u2713' : ''}
+                </span>
+                <span>TRAJECTORIES</span>
+              </button>
+            </div>
+
+            <div className="layer-panel-header">
+              <span>AGENCY</span>
+            </div>
+            <div className="layer-panel-body">
+              <button
+                className="layer-toggle"
+                onClick={() => setMissionFilter('all')}
+              >
+                <span className={`layer-checkbox ${missionFilter === 'all' ? 'checked' : ''}`}>
+                  {missionFilter === 'all' ? '\u2713' : ''}
+                </span>
+                <span>ALL ({missions.length})</span>
+              </button>
+              {agencies.map((agency) => (
+                <button
+                  key={agency}
+                  className="layer-toggle"
+                  onClick={() => setMissionFilter(agency)}
+                >
+                  <span className={`layer-checkbox ${missionFilter === agency ? 'checked' : ''}`}>
+                    {missionFilter === agency ? '\u2713' : ''}
+                  </span>
+                  <span>{agency.toUpperCase()}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Three.js Globe */}
           <EarthScene
             launchSites={showLaunchSites ? launchSites : []}
             onSelectSite={handleSelectSite}
           />
         </div>
 
-        {/* Detail panel */}
+        {/* Detail panel (conditional, fixed right column) */}
         <MissionDetailPanel
           mission={selectedMission}
           onClose={handleCloseDetail}

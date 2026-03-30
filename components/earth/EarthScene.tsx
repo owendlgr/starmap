@@ -1,14 +1,32 @@
 'use client';
-import { useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useRef, useMemo, Suspense } from 'react';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 import { LaunchSiteMarkers } from './LaunchSites';
+import { TrajectoryArcs } from './TrajectoryArcs';
+import { useEarthStore } from '@/lib/stores/earthStore';
 import type { LaunchSite } from '@/lib/types';
 
 const EARTH_RADIUS = 1;
 
-function EarthGlobe() {
+function TexturedEarthGlobe() {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const texture = useLoader(THREE.TextureLoader, '/textures/earth_daymap.jpg');
+
+  return (
+    <mesh ref={meshRef}>
+      <sphereGeometry args={[EARTH_RADIUS, 64, 64]} />
+      <meshStandardMaterial
+        map={texture}
+        roughness={0.8}
+        metalness={0.1}
+      />
+    </mesh>
+  );
+}
+
+function FallbackEarthGlobe() {
   const meshRef = useRef<THREE.Mesh>(null);
 
   return (
@@ -20,6 +38,14 @@ function EarthGlobe() {
         metalness={0.1}
       />
     </mesh>
+  );
+}
+
+function EarthGlobe() {
+  return (
+    <Suspense fallback={<FallbackEarthGlobe />}>
+      <TexturedEarthGlobe />
+    </Suspense>
   );
 }
 
@@ -126,6 +152,9 @@ interface EarthSceneProps {
 }
 
 export default function EarthScene({ launchSites, onSelectSite }: EarthSceneProps) {
+  const missions = useEarthStore((s) => s.missions);
+  const showTrajectories = useEarthStore((s) => s.showTrajectories);
+
   return (
     <Canvas
       camera={{ position: [0, 0.5, 2.5], fov: 50 }}
@@ -147,6 +176,12 @@ export default function EarthScene({ launchSites, onSelectSite }: EarthSceneProp
           earthRadius={EARTH_RADIUS}
           onSelectSite={onSelectSite}
         />
+        {showTrajectories && (
+          <TrajectoryArcs
+            missions={missions}
+            earthRadius={EARTH_RADIUS}
+          />
+        )}
       </group>
 
       <OrbitControls

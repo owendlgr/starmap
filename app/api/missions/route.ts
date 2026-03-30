@@ -167,16 +167,34 @@ async function loadLocalData(): Promise<Mission[] | null> {
 
 async function fetchLL2(): Promise<Mission[] | null> {
   try {
-    const url = 'https://ll.thespacedevs.com/2.2.0/launch/?limit=100&offset=0&ordering=-net';
-    const res = await fetch(url, {
-      next: { revalidate: 600 },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const results: LL2Result[] = data.results ?? [];
-    if (results.length === 0) return null;
-    return normalizeLL2(results);
+    // Fetch past launches (these have real status data like Success/Failed)
+    const previousUrl = 'https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=80&offset=0&ordering=-net';
+    const upcomingUrl = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=20&offset=0&ordering=net';
+
+    const [previousRes, upcomingRes] = await Promise.all([
+      fetch(previousUrl, {
+        next: { revalidate: 600 },
+        signal: AbortSignal.timeout(10000),
+      }),
+      fetch(upcomingUrl, {
+        next: { revalidate: 600 },
+        signal: AbortSignal.timeout(10000),
+      }).catch(() => null),
+    ]);
+
+    if (!previousRes.ok) return null;
+    const previousData = await previousRes.json();
+    const previousResults: LL2Result[] = previousData.results ?? [];
+
+    let upcomingResults: LL2Result[] = [];
+    if (upcomingRes && upcomingRes.ok) {
+      const upcomingData = await upcomingRes.json();
+      upcomingResults = upcomingData.results ?? [];
+    }
+
+    const allResults = [...previousResults, ...upcomingResults];
+    if (allResults.length === 0) return null;
+    return normalizeLL2(allResults);
   } catch {
     return null;
   }

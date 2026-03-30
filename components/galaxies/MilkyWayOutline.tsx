@@ -50,22 +50,43 @@ export function MilkyWayOutline() {
         />
       </mesh>
 
-      {/* Label */}
+      {/* Crosshair label */}
       <Html position={[0, 0.35, 0]} center style={{ pointerEvents: 'none' }}>
-        <span
+        <div
           style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.55rem',
-            fontWeight: 700,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-            color: '#4a9eff',
-            textShadow: '0 0 6px rgba(0,0,0,0.9)',
-            whiteSpace: 'nowrap',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '2px',
           }}
         >
-          You are here
-        </span>
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              lineHeight: 1,
+              color: '#ff4444',
+              textShadow: '0 0 6px rgba(0,0,0,0.9)',
+            }}
+          >
+            ⊕
+          </span>
+          <span
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.45rem',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: '#ff4444',
+              textShadow: '0 0 6px rgba(0,0,0,0.9)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            You are here
+          </span>
+        </div>
       </Html>
     </group>
   );

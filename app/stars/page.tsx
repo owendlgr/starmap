@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { TopNav } from '@/components/layout/TopNav';
 import { StarSearch } from '@/components/stars/StarSearch';
 import { StarSidePanel } from '@/components/stars/StarSidePanel';
-import { ZoomSlider } from '@/components/stars/ZoomSlider';
+// ZoomSlider replaced by inline MapControls
 import { useStore } from '@/lib/useStore';
 import { useAppStore } from '@/lib/stores/appStore';
 import type { ScaleUnit } from '@/lib/types';
@@ -44,7 +44,7 @@ function StarLayerPanel() {
   } = useStore();
 
   return (
-    <div className="layer-panel">
+    <div className="layer-panel" style={{ maxHeight: '300px', overflowY: 'auto' }}>
       <div className="layer-panel-header">
         <span>LAYERS</span>
       </div>
@@ -162,6 +162,47 @@ function StarLayerPanel() {
   );
 }
 
+function MapControls() {
+  const { zoomTarget, setZoomTarget, triggerCameraReset } = useStore();
+  return (
+    <div className="map-controls" style={{
+      position: 'absolute',
+      top: '50%',
+      right: '12px',
+      transform: 'translateY(-50%)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      zIndex: 10,
+    }}>
+      <button
+        className="map-control-btn"
+        onClick={() => setZoomTarget(zoomTarget * 0.7)}
+        title="Zoom in"
+        style={{ width: 32, height: 32 }}
+      >
+        +
+      </button>
+      <button
+        className="map-control-btn"
+        onClick={() => setZoomTarget(zoomTarget * 1.4)}
+        title="Zoom out"
+        style={{ width: 32, height: 32 }}
+      >
+        −
+      </button>
+      <button
+        className="map-control-btn"
+        onClick={triggerCameraReset}
+        title="Re-center on Sol"
+        style={{ width: 32, height: 32 }}
+      >
+        ⌂
+      </button>
+    </div>
+  );
+}
+
 export default function StarsPage() {
   const theme = useAppStore((s) => s.theme);
   const showSources = useAppStore((s) => s.showSources);
@@ -196,12 +237,32 @@ export default function StarsPage() {
         <StarScene />
         <StarLayerPanel />
         <StarSearch />
-        <ZoomSlider />
         <StarSidePanel />
+
+        {/* Map controls — right side (+, -, home) */}
+        <MapControls />
+
+        {/* Spectral type legend */}
+        <div className="legend-bar">
+          {[
+            { label: 'O', color: '#6699ff' },
+            { label: 'B', color: '#aabbff' },
+            { label: 'A', color: '#ffffff' },
+            { label: 'F', color: '#ffeecc' },
+            { label: 'G', color: '#ffdd44' },
+            { label: 'K', color: '#ff8833' },
+            { label: 'M', color: '#ff4422' },
+          ].map((s) => (
+            <span key={s.label} className="legend-item">
+              <span className="legend-dot" style={{ background: s.color }} />
+              <span className="legend-label">{s.label}</span>
+            </span>
+          ))}
+        </div>
 
         {/* Help hint */}
         <div style={{
-          position: 'absolute', bottom: '1rem', left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', bottom: '2.5rem', left: '50%', transform: 'translateX(-50%)',
           fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 600,
           letterSpacing: '0.08em', color: 'var(--text-muted)', opacity: 0.6,
           pointerEvents: 'none', whiteSpace: 'nowrap',

@@ -55,7 +55,8 @@ function Moon({ moon, planetRadius }: { moon: MoonData; planetRadius: number }) 
           <meshStandardMaterial color="#c0c0c8" roughness={0.8} />
         </mesh>
 
-        {showLabels && (
+        {/* Show labels for major moons (radius > 200km) always; others when labels toggled on */}
+        {(showLabels || moon.radius > 200) && (
           <Html
             position={[0, size + 0.12, 0]}
             center
@@ -67,7 +68,7 @@ function Moon({ moon, planetRadius }: { moon: MoonData; planetRadius: number }) 
                 fontSize: '0.5rem',
                 fontWeight: 600,
                 letterSpacing: '0.06em',
-                color: '#8888a0',
+                color: moon.radius > 200 ? '#b0b0c8' : '#8888a0',
                 textShadow: '0 0 4px rgba(0,0,0,0.9)',
               }}
             >

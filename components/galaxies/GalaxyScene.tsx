@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useMemo, useCallback } from 'react';
-import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
+import { useRef, useMemo, useCallback, useState } from 'react';
+import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Stars, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGalaxyStore } from '@/lib/stores/galaxyStore';
@@ -13,10 +13,58 @@ import type { GalaxyData } from '@/lib/types';
 
 const LOCAL_GROUP_MPC = 1.5;
 
+/* ── Well-known galaxy names that always show labels ─────── */
+
+const WELL_KNOWN_NAMES = [
+  'andromeda', 'triangulum', 'sombrero', 'whirlpool', 'pinwheel',
+  'cartwheel', 'sunflower', 'black eye', 'cigar', 'bode',
+  'centaurus', 'sculptor', 'fornax', 'sagittarius', 'canis major',
+  'large magellanic', 'small magellanic', 'lmc', 'smc',
+  'messier 31', 'messier 33', 'messier 51', 'messier 81',
+  'messier 82', 'messier 87', 'messier 104',
+  'ngc 253', 'ngc 5128', 'ic 1613',
+];
+
+function isWellKnown(name: string): boolean {
+  const lower = name.toLowerCase();
+  return WELL_KNOWN_NAMES.some((wk) => lower.includes(wk));
+}
+
+/* ── Magnitude threshold for default label visibility ────── */
+
+const LABEL_MAG_THRESHOLD = 8;
+
+/* ── Scale ratios per galaxy type ────────────────────────── */
+
+function getGalaxySpriteScale(
+  galaxy: GalaxyData,
+  baseSize: number,
+): [number, number, number] {
+  const gtype = galaxy.galaxyType ?? galaxy.type.toLowerCase();
+
+  if (gtype.includes('spiral')) {
+    return [baseSize * 1.5, baseSize, 1];
+  }
+  if (gtype.includes('elliptical')) {
+    return [baseSize, baseSize, 1];
+  }
+  if (gtype.includes('irregular')) {
+    return [baseSize * 1.2, baseSize * 0.9, 1];
+  }
+  if (gtype.includes('dwarf')) {
+    return [baseSize * 0.5, baseSize * 0.5, 1];
+  }
+  if (gtype.includes('lenticular')) {
+    return [baseSize * 1.3, baseSize * 0.7, 1];
+  }
+  // unknown — roughly circular
+  return [baseSize, baseSize, 1];
+}
+
 /* ── Single galaxy point ─────────────────────────────────── */
 
 function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const spriteRef = useRef<THREE.Sprite>(null);
   const setSelectedGalaxy = useGalaxyStore((s) => s.setSelectedGalaxy);
   const selectedGalaxy = useGalaxyStore((s) => s.selectedGalaxy);
   const showLabels = useGalaxyStore((s) => s.showLabels);
@@ -28,14 +76,25 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
 
   const isSelected = selectedGalaxy?.id === galaxy.id;
   const isLocalGroup = (galaxy.distanceMpc ?? 20) < LOCAL_GROUP_MPC;
+  const mag = galaxy.magnitude ?? 12;
 
   // Size based on magnitude and distance layer
   const size = useMemo(() => {
-    const mag = galaxy.magnitude ?? 12;
     const base = Math.max(0.06, 0.5 - (mag - 3) * 0.035);
-    // Local Group galaxies are slightly larger for visibility
     return isLocalGroup ? base * 1.2 : base;
-  }, [galaxy.magnitude, isLocalGroup]);
+  }, [mag, isLocalGroup]);
+
+  // Whether to show label: well-known always, bright (mag < 8) always, others only when close
+  const shouldShowLabel = useMemo(() => {
+    if (!showLabels) return false;
+    if (isSelected) return true;
+    if (isWellKnown(galaxy.name)) return true;
+    if (mag < LABEL_MAG_THRESHOLD) return true;
+    return false;
+  }, [showLabels, isSelected, galaxy.name, mag]);
+
+  // For dimmer galaxies, show label only when camera is near
+  const [showDistanceLabel, setShowDistanceLabel] = useState(false);
 
   const handleClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
@@ -45,13 +104,37 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
     [galaxy, setSelectedGalaxy],
   );
 
-  useFrame(() => {
-    if (!meshRef.current) return;
+  // Sprite scale based on morphology
+  const spriteScale = useMemo(
+    () => getGalaxySpriteScale(galaxy, size * 4),
+    [galaxy, size],
+  );
+
+  // Glow for bright galaxies (mag < 5)
+  const showGlow = mag < 5;
+
+  useFrame(({ camera }) => {
+    if (!spriteRef.current) return;
+
+    // Pulse when selected
     if (isSelected) {
-      const s = size * (1 + 0.15 * Math.sin(Date.now() * 0.004));
-      meshRef.current.scale.setScalar(s / size);
+      const s = 1 + 0.15 * Math.sin(Date.now() * 0.004);
+      spriteRef.current.scale.set(
+        spriteScale[0] * s,
+        spriteScale[1] * s,
+        1,
+      );
     } else {
-      meshRef.current.scale.setScalar(1);
+      spriteRef.current.scale.set(spriteScale[0], spriteScale[1], 1);
+    }
+
+    // Distance-based label visibility for non-prominent galaxies
+    if (showLabels && !shouldShowLabel) {
+      const gx = galaxy.x ?? 0;
+      const gy = galaxy.y ?? 0;
+      const gz = galaxy.z ?? 0;
+      const dist = camera.position.distanceTo(new THREE.Vector3(gx, gy, gz));
+      setShowDistanceLabel(dist < 5);
     }
   });
 
@@ -59,29 +142,41 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
   const y = galaxy.y ?? 0;
   const z = galaxy.z ?? 0;
 
+  const labelVisible = shouldShowLabel || showDistanceLabel;
+
   return (
     <group position={[x, y, z]}>
-      <mesh ref={meshRef} onClick={handleClick}>
-        <sphereGeometry args={[size, 10, 10]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={isSelected ? 1 : isLocalGroup ? 0.9 : 0.75}
-        />
-      </mesh>
-
-      {/* Glow sprite */}
-      <sprite scale={[size * 4, size * 4, 1]}>
+      {/* Main galaxy sprite with morphology-based scale */}
+      <sprite
+        ref={spriteRef}
+        scale={spriteScale}
+        onClick={handleClick}
+      >
         <spriteMaterial
           color={color}
           transparent
-          opacity={isSelected ? 0.35 : isLocalGroup ? 0.2 : 0.1}
+          opacity={isSelected ? 1 : isLocalGroup ? 0.9 : 0.75}
+          sizeAttenuation={true}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
       </sprite>
 
-      {showLabels && (
+      {/* Extra glow for bright galaxies (mag < 5) */}
+      {showGlow && (
+        <sprite scale={[size * 8, size * 8, 1]}>
+          <spriteMaterial
+            color={color}
+            transparent
+            opacity={isSelected ? 0.4 : 0.25}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            sizeAttenuation={true}
+          />
+        </sprite>
+      )}
+
+      {labelVisible && (
         <Html
           position={[0, size + 0.15, 0]}
           center
