@@ -10,6 +10,7 @@ import { ConstellationLines } from './ConstellationLines';
 import { CONSTELLATION_PAIRS } from '@/lib/constellations';
 import { SelectionMarker, MeasureLine } from './SelectionMarker';
 import { SceneGrid } from './SceneGrid';
+import { FlatMap } from './FlatMap';
 import { useStore } from '@/lib/useStore';
 import { formatDistance } from '@/lib/coordinates';
 import type { Star, StarChunk } from '@/lib/types';
@@ -767,18 +768,19 @@ export function StarMap() {
           </div>
         </div>
       )}
-      <Canvas
-        camera={{ fov: 60, near: 0.001, far: 200000 }}
-        gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}
-        dpr={[1, 2]} style={{ background: bg }}
-      >
-        <Suspense fallback={null}>
-          {mapMode === '3d'
-            ? <Scene />
-            : <Scene2D projRef={projRef} />
-          }
-        </Suspense>
-      </Canvas>
+      {mapMode === '2d' ? (
+        <FlatMap />
+      ) : (
+        <Canvas
+          camera={{ fov: 60, near: 0.001, far: 200000 }}
+          gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}
+          dpr={[1, 2]} style={{ background: bg }}
+        >
+          <Suspense fallback={null}>
+            <Scene />
+          </Suspense>
+        </Canvas>
+      )}
 
       {/* 2D tooltip — outer wrapper is pointer-events:none so it never blocks
           OrbitControls or hover detection; only the panel itself is interactive. */}
