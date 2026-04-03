@@ -148,6 +148,30 @@ function deriveLaunchSites(missions: Mission[]): LaunchSite[] {
   return Array.from(siteMap.values());
 }
 
+/* ── Normalize status text → statusCategory ─────────────────── */
+
+function normalizeStatus(status: string): Mission['statusCategory'] {
+  const s = (status ?? '').toLowerCase();
+  if (s.includes('partial')) return 'partial';
+  if (s.includes('success') || s.includes('operational')) return 'success';
+  if (s.includes('fail')) return 'failed';
+  if (s.includes('active') || s.includes('en route')) return 'active';
+  if (s.includes('transit') || s.includes('cruise')) return 'in-transit';
+  if (s.includes('ended') || s.includes('retired')) return 'ended';
+  if (s.includes('upcoming') || s.includes('tbd') || s.includes('tbc') || s.includes('go')) return 'upcoming';
+  return undefined;
+}
+
+function normalizeMissionType(missionType: string | undefined): string {
+  if (!missionType) return 'satellite';
+  const t = missionType.toLowerCase();
+  if (t.includes('crew') || t.includes('human')) return 'crewed';
+  if (t.includes('robotic') || t.includes('rover') || t.includes('probe')) return 'probe';
+  if (t.includes('science') || t.includes('observ')) return 'observatory';
+  if (t.includes('comm')) return 'satellite';
+  return 'satellite';
+}
+
 /* ── Try loading pre-fetched data from public/data/missions.json ── */
 
 async function loadLocalData(): Promise<Mission[] | null> {
@@ -155,11 +179,13 @@ async function loadLocalData(): Promise<Mission[] | null> {
     const filePath = path.join(process.cwd(), 'public', 'data', 'missions.json');
     const raw = await fs.readFile(filePath, 'utf-8');
     const data = JSON.parse(raw);
-    if (Array.isArray(data) && data.length > 0) {
-      // Data from the Python script is already in our format
-      return data as Mission[];
-    }
-    return null;
+    if (!Array.isArray(data) || data.length === 0) return null;
+    // Normalize LL2 fields to our Mission type
+    return data.map((m: Record<string, unknown>) => ({
+      ...m,
+      statusCategory: (m.statusCategory as string) || normalizeStatus(m.status as string ?? ''),
+      category: (m.category as string) || normalizeMissionType(m.missionType as string),
+    })) as Mission[];
   } catch {
     return null;
   }
