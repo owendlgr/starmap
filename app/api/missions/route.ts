@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import type { Mission, LaunchSite } from '@/lib/types';
+import { MISSIONS_DATABASE } from '@/lib/data/missions';
 
-/* ── Fallback dataset: ~50 real landmark missions across all agencies ── */
+/* ── Fallback dataset: comprehensive database (lib/data/missions.ts) ── */
 
 const FALLBACK_MISSIONS: Mission[] = [
-  // NASA - Apollo Program
-  { id: 'apollo-11', name: 'Apollo 11', agency: 'NASA', agencyCountry: 'USA', status: 'Success', date: '1969-07-16T13:32:00Z', rocket: 'Saturn V', orbit: 'Lunar Orbit', description: 'First crewed Moon landing. Neil Armstrong and Buzz Aldrin walked on the lunar surface.', launchSite: { name: 'LC-39A, Kennedy Space Center', latitude: 28.6083, longitude: -80.6041 } },
+  ...MISSIONS_DATABASE,
+  // Original compact entries kept as additional fallback
+  { id: 'apollo-11-compat', name: 'Apollo 11', agency: 'NASA', agencyCountry: 'USA', status: 'Success', date: '1969-07-16T13:32:00Z', rocket: 'Saturn V', orbit: 'Lunar Orbit', description: 'First crewed Moon landing. Neil Armstrong and Buzz Aldrin walked on the lunar surface.', launchSite: { name: 'LC-39A, Kennedy Space Center', latitude: 28.6083, longitude: -80.6041 } },
   { id: 'apollo-13', name: 'Apollo 13', agency: 'NASA', agencyCountry: 'USA', status: 'Partial Failure', date: '1970-04-11T19:13:00Z', rocket: 'Saturn V', orbit: 'Lunar Orbit', description: 'Mission aborted after oxygen tank explosion. Crew returned safely to Earth.', launchSite: { name: 'LC-39A, Kennedy Space Center', latitude: 28.6083, longitude: -80.6041 } },
   { id: 'sts-1', name: 'STS-1 Columbia', agency: 'NASA', agencyCountry: 'USA', status: 'Success', date: '1981-04-12T12:00:03Z', rocket: 'Space Shuttle', orbit: 'Low Earth Orbit', description: 'First Space Shuttle mission. Columbia orbited Earth 37 times.', launchSite: { name: 'LC-39A, Kennedy Space Center', latitude: 28.6083, longitude: -80.6041 } },
   { id: 'sts-31', name: 'STS-31 Discovery (Hubble)', agency: 'NASA', agencyCountry: 'USA', status: 'Success', date: '1990-04-24T12:33:51Z', rocket: 'Space Shuttle', orbit: 'Low Earth Orbit', description: 'Deployed the Hubble Space Telescope into orbit.', launchSite: { name: 'LC-39B, Kennedy Space Center', latitude: 28.6272, longitude: -80.6208 } },
@@ -168,8 +170,9 @@ async function loadLocalData(): Promise<Mission[] | null> {
 async function fetchLL2(): Promise<Mission[] | null> {
   try {
     // Fetch past launches (these have real status data like Success/Failed)
-    const previousUrl = 'https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=80&offset=0&ordering=-net';
-    const upcomingUrl = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=20&offset=0&ordering=net';
+    // Fetch up to 300 past + 50 upcoming from LL2 for comprehensive coverage
+    const previousUrl = 'https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=300&offset=0&ordering=-net';
+    const upcomingUrl = 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=50&offset=0&ordering=net';
 
     const [previousRes, upcomingRes] = await Promise.all([
       fetch(previousUrl, {
@@ -211,16 +214,36 @@ export async function GET() {
       });
     }
 
-    // Strategy: local file > LL2 API > fallback
-    let missions = await loadLocalData();
+    // Strategy: database is primary, LL2/local file supplements with recent launches
+    const dbMissions = [...MISSIONS_DATABASE];
+    const idSet = new Set(dbMissions.map((m) => m.id));
+    const merged = [...dbMissions];
 
-    if (!missions || missions.length === 0) {
-      missions = await fetchLL2();
+    // Try local file first (fast), then LL2 API (slower, may timeout)
+    let liveMissions = await loadLocalData();
+    if (!liveMissions || liveMissions.length === 0) {
+      // LL2 with a short timeout — don't block if it's slow
+      try {
+        liveMissions = await Promise.race([
+          fetchLL2(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000)),
+        ]);
+      } catch {
+        liveMissions = null;
+      }
     }
 
-    if (!missions || missions.length === 0) {
-      missions = FALLBACK_MISSIONS;
+    // Merge: append any live missions not already in our database
+    if (liveMissions) {
+      for (const m of liveMissions) {
+        if (!idSet.has(m.id)) {
+          merged.push(m);
+          idSet.add(m.id);
+        }
+      }
     }
+
+    const missions = merged;
 
     // Sort by date descending
     missions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -162,22 +162,28 @@ export const PLANETS: PlanetData[] = [
     hasRings: true,
     atmosphere: ['H2 89.8%', 'He 10.2%'],
     moons: [
-      {
-        id: 'io', name: 'Io', radius: 1821.6, distanceKm: 421700,
-        orbitalPeriod: 1.769, mass: 893.2, eccentricity: 0.0041, inclination: 0.036,
-      },
-      {
-        id: 'europa', name: 'Europa', radius: 1560.8, distanceKm: 671034,
-        orbitalPeriod: 3.551, mass: 480.0, eccentricity: 0.0094, inclination: 0.466,
-      },
-      {
-        id: 'ganymede', name: 'Ganymede', radius: 2634.1, distanceKm: 1070412,
-        orbitalPeriod: 7.155, mass: 1481.9, eccentricity: 0.0013, inclination: 0.177,
-      },
-      {
-        id: 'callisto', name: 'Callisto', radius: 2410.3, distanceKm: 1882709,
-        orbitalPeriod: 16.689, mass: 1075.9, eccentricity: 0.0074, inclination: 0.192,
-      },
+      // Inner moons
+      { id: 'metis', name: 'Metis', radius: 21.5, distanceKm: 127969, orbitalPeriod: 0.295, mass: 0.036 },
+      { id: 'adrastea', name: 'Adrastea', radius: 8.2, distanceKm: 128980, orbitalPeriod: 0.298, mass: 0.002 },
+      { id: 'amalthea', name: 'Amalthea', radius: 83.5, distanceKm: 181366, orbitalPeriod: 0.498, mass: 2.08 },
+      { id: 'thebe', name: 'Thebe', radius: 49.3, distanceKm: 221889, orbitalPeriod: 0.675, mass: 0.43 },
+      // Galilean moons
+      { id: 'io', name: 'Io', radius: 1821.6, distanceKm: 421700, orbitalPeriod: 1.769, mass: 893.2, eccentricity: 0.0041, inclination: 0.036 },
+      { id: 'europa', name: 'Europa', radius: 1560.8, distanceKm: 671034, orbitalPeriod: 3.551, mass: 480.0, eccentricity: 0.0094, inclination: 0.466 },
+      { id: 'ganymede', name: 'Ganymede', radius: 2634.1, distanceKm: 1070412, orbitalPeriod: 7.155, mass: 1481.9, eccentricity: 0.0013, inclination: 0.177 },
+      { id: 'callisto', name: 'Callisto', radius: 2410.3, distanceKm: 1882709, orbitalPeriod: 16.689, mass: 1075.9, eccentricity: 0.0074, inclination: 0.192 },
+      // Themisto
+      { id: 'themisto', name: 'Themisto', radius: 4.0, distanceKm: 7284000, orbitalPeriod: 130.02, mass: 0.0007 },
+      // Himalia group
+      { id: 'leda', name: 'Leda', radius: 10.0, distanceKm: 11165000, orbitalPeriod: 240.92, mass: 0.006 },
+      { id: 'himalia', name: 'Himalia', radius: 69.8, distanceKm: 11461000, orbitalPeriod: 250.56, mass: 4.2 },
+      { id: 'lysithea', name: 'Lysithea', radius: 18.0, distanceKm: 11720000, orbitalPeriod: 259.22, mass: 0.063 },
+      { id: 'elara', name: 'Elara', radius: 43.0, distanceKm: 11778000, orbitalPeriod: 259.64, mass: 0.87 },
+      // Retrograde irregular
+      { id: 'ananke', name: 'Ananke', radius: 14.0, distanceKm: 21276000, orbitalPeriod: -610.5, mass: 0.030 },
+      { id: 'carme', name: 'Carme', radius: 23.0, distanceKm: 23404000, orbitalPeriod: -702.3, mass: 0.13 },
+      { id: 'pasiphae', name: 'Pasiphae', radius: 30.0, distanceKm: 23624000, orbitalPeriod: -743.6, mass: 0.30 },
+      { id: 'sinope', name: 'Sinope', radius: 19.0, distanceKm: 23939000, orbitalPeriod: -758.9, mass: 0.075 },
     ],
     texture: 'jupiter.jpg',
     color: '#c8a882',
@@ -210,34 +216,36 @@ export const PLANETS: PlanetData[] = [
     hasRings: true,
     atmosphere: ['H2 96.3%', 'He 3.25%'],
     moons: [
-      {
-        id: 'mimas', name: 'Mimas', radius: 198.2, distanceKm: 185539,
-        orbitalPeriod: 0.942, mass: 0.375, eccentricity: 0.0196, inclination: 1.574,
-      },
-      {
-        id: 'enceladus', name: 'Enceladus', radius: 252.1, distanceKm: 237948,
-        orbitalPeriod: 1.370, mass: 1.080, eccentricity: 0.0047, inclination: 0.009,
-      },
-      {
-        id: 'tethys', name: 'Tethys', radius: 531.1, distanceKm: 294619,
-        orbitalPeriod: 1.888, mass: 6.174, eccentricity: 0.0001, inclination: 1.086,
-      },
-      {
-        id: 'dione', name: 'Dione', radius: 561.4, distanceKm: 377396,
-        orbitalPeriod: 2.737, mass: 10.96, eccentricity: 0.0022, inclination: 0.019,
-      },
-      {
-        id: 'rhea', name: 'Rhea', radius: 763.8, distanceKm: 527108,
-        orbitalPeriod: 4.518, mass: 23.07, eccentricity: 0.0013, inclination: 0.345,
-      },
-      {
-        id: 'titan', name: 'Titan', radius: 2574.7, distanceKm: 1221870,
-        orbitalPeriod: 15.945, mass: 1345.5, eccentricity: 0.0288, inclination: 0.348,
-      },
-      {
-        id: 'iapetus', name: 'Iapetus', radius: 735.6, distanceKm: 3560820,
-        orbitalPeriod: 79.322, mass: 18.06, eccentricity: 0.0276, inclination: 15.47,
-      },
+      // Inner/ring shepherds
+      { id: 'pan', name: 'Pan', radius: 14.1, distanceKm: 133584, orbitalPeriod: 0.575, mass: 0.005 },
+      { id: 'daphnis', name: 'Daphnis', radius: 3.8, distanceKm: 136505, orbitalPeriod: 0.594, mass: 0.00008 },
+      { id: 'atlas', name: 'Atlas', radius: 15.3, distanceKm: 137670, orbitalPeriod: 0.602, mass: 0.007 },
+      { id: 'prometheus', name: 'Prometheus', radius: 43.1, distanceKm: 139380, orbitalPeriod: 0.613, mass: 0.16 },
+      { id: 'pandora', name: 'Pandora', radius: 40.7, distanceKm: 141720, orbitalPeriod: 0.629, mass: 0.14 },
+      { id: 'epimetheus', name: 'Epimetheus', radius: 58.1, distanceKm: 151410, orbitalPeriod: 0.694, mass: 0.53 },
+      { id: 'janus', name: 'Janus', radius: 89.5, distanceKm: 151460, orbitalPeriod: 0.695, mass: 1.9 },
+      // Mid-sized
+      { id: 'mimas', name: 'Mimas', radius: 198.2, distanceKm: 185539, orbitalPeriod: 0.942, mass: 0.375, eccentricity: 0.0196, inclination: 1.574 },
+      { id: 'enceladus', name: 'Enceladus', radius: 252.1, distanceKm: 237948, orbitalPeriod: 1.370, mass: 1.080, eccentricity: 0.0047, inclination: 0.009 },
+      { id: 'tethys', name: 'Tethys', radius: 531.1, distanceKm: 294619, orbitalPeriod: 1.888, mass: 6.174, eccentricity: 0.0001, inclination: 1.086 },
+      { id: 'telesto', name: 'Telesto', radius: 12.4, distanceKm: 294619, orbitalPeriod: 1.888, mass: 0.012 },
+      { id: 'calypso', name: 'Calypso', radius: 9.5, distanceKm: 295000, orbitalPeriod: 1.888, mass: 0.007 },
+      { id: 'dione', name: 'Dione', radius: 561.4, distanceKm: 377396, orbitalPeriod: 2.737, mass: 10.96, eccentricity: 0.0022, inclination: 0.019 },
+      { id: 'helene', name: 'Helene', radius: 17.6, distanceKm: 377400, orbitalPeriod: 2.737, mass: 0.025 },
+      { id: 'rhea', name: 'Rhea', radius: 763.8, distanceKm: 527108, orbitalPeriod: 4.518, mass: 23.07, eccentricity: 0.0013, inclination: 0.345 },
+      { id: 'titan', name: 'Titan', radius: 2574.7, distanceKm: 1221870, orbitalPeriod: 15.945, mass: 1345.5, eccentricity: 0.0288, inclination: 0.348 },
+      { id: 'hyperion', name: 'Hyperion', radius: 135.0, distanceKm: 1481010, orbitalPeriod: 21.277, mass: 5.6 },
+      { id: 'iapetus', name: 'Iapetus', radius: 735.6, distanceKm: 3560820, orbitalPeriod: 79.322, mass: 18.06, eccentricity: 0.0276, inclination: 15.47 },
+      // Outer irregular (prograde)
+      { id: 'kiviuq', name: 'Kiviuq', radius: 8.0, distanceKm: 11111000, orbitalPeriod: 449.2, mass: 0.003 },
+      { id: 'ijiraq', name: 'Ijiraq', radius: 6.0, distanceKm: 11124000, orbitalPeriod: 451.4, mass: 0.001 },
+      { id: 'paaliaq', name: 'Paaliaq', radius: 11.0, distanceKm: 15198000, orbitalPeriod: 686.9, mass: 0.008 },
+      { id: 'albiorix', name: 'Albiorix', radius: 16.0, distanceKm: 16394000, orbitalPeriod: 783.5, mass: 0.021 },
+      { id: 'tarvos', name: 'Tarvos', radius: 7.0, distanceKm: 17983000, orbitalPeriod: 926.2, mass: 0.002 },
+      { id: 'siarnaq', name: 'Siarnaq', radius: 20.0, distanceKm: 18185000, orbitalPeriod: 895.6, mass: 0.040 },
+      // Outer retrograde
+      { id: 'phoebe', name: 'Phoebe', radius: 106.5, distanceKm: 12955000, orbitalPeriod: -550.48, mass: 8.3 },
+      { id: 'ymir', name: 'Ymir', radius: 9.0, distanceKm: 23096000, orbitalPeriod: -1315.1, mass: 0.004 },
     ],
     texture: 'saturn.jpg',
     color: '#c8b882',
@@ -270,26 +278,37 @@ export const PLANETS: PlanetData[] = [
     hasRings: true,
     atmosphere: ['H2 82.5%', 'He 15.2%', 'CH4 2.3%'],
     moons: [
-      {
-        id: 'miranda', name: 'Miranda', radius: 235.8, distanceKm: 129390,
-        orbitalPeriod: 1.413, mass: 0.659, eccentricity: 0.0013, inclination: 4.232,
-      },
-      {
-        id: 'ariel', name: 'Ariel', radius: 578.9, distanceKm: 191020,
-        orbitalPeriod: 2.520, mass: 13.53, eccentricity: 0.0012, inclination: 0.260,
-      },
-      {
-        id: 'umbriel', name: 'Umbriel', radius: 584.7, distanceKm: 266300,
-        orbitalPeriod: 4.144, mass: 11.72, eccentricity: 0.0039, inclination: 0.128,
-      },
-      {
-        id: 'titania', name: 'Titania', radius: 788.4, distanceKm: 435910,
-        orbitalPeriod: 8.706, mass: 35.27, eccentricity: 0.0011, inclination: 0.079,
-      },
-      {
-        id: 'oberon', name: 'Oberon', radius: 761.4, distanceKm: 583520,
-        orbitalPeriod: 13.463, mass: 30.14, eccentricity: 0.0014, inclination: 0.068,
-      },
+      // Inner shepherd moons
+      { id: 'cordelia', name: 'Cordelia', radius: 20.1, distanceKm: 49752, orbitalPeriod: 0.335, mass: 0.044 },
+      { id: 'ophelia', name: 'Ophelia', radius: 21.4, distanceKm: 53764, orbitalPeriod: 0.376, mass: 0.053 },
+      { id: 'bianca', name: 'Bianca', radius: 27.0, distanceKm: 59165, orbitalPeriod: 0.435, mass: 0.092 },
+      { id: 'cressida', name: 'Cressida', radius: 39.8, distanceKm: 61767, orbitalPeriod: 0.464, mass: 0.34 },
+      { id: 'desdemona', name: 'Desdemona', radius: 32.0, distanceKm: 62659, orbitalPeriod: 0.474, mass: 0.18 },
+      { id: 'juliet', name: 'Juliet', radius: 46.8, distanceKm: 64358, orbitalPeriod: 0.493, mass: 0.56 },
+      { id: 'portia', name: 'Portia', radius: 67.6, distanceKm: 66097, orbitalPeriod: 0.513, mass: 1.70 },
+      { id: 'rosalind', name: 'Rosalind', radius: 36.0, distanceKm: 69927, orbitalPeriod: 0.558, mass: 0.25 },
+      { id: 'cupid', name: 'Cupid', radius: 9.0, distanceKm: 74392, orbitalPeriod: 0.618, mass: 0.001 },
+      { id: 'belinda', name: 'Belinda', radius: 40.3, distanceKm: 75255, orbitalPeriod: 0.624, mass: 0.35 },
+      { id: 'perdita', name: 'Perdita', radius: 13.0, distanceKm: 76417, orbitalPeriod: 0.638, mass: 0.002 },
+      { id: 'puck', name: 'Puck', radius: 81.0, distanceKm: 86004, orbitalPeriod: 0.762, mass: 2.89 },
+      { id: 'mab', name: 'Mab', radius: 12.0, distanceKm: 97736, orbitalPeriod: 0.923, mass: 0.001 },
+      // Major moons
+      { id: 'miranda', name: 'Miranda', radius: 235.8, distanceKm: 129390, orbitalPeriod: 1.413, mass: 0.659, eccentricity: 0.0013, inclination: 4.232 },
+      { id: 'ariel', name: 'Ariel', radius: 578.9, distanceKm: 191020, orbitalPeriod: 2.520, mass: 13.53, eccentricity: 0.0012, inclination: 0.260 },
+      { id: 'umbriel', name: 'Umbriel', radius: 584.7, distanceKm: 266300, orbitalPeriod: 4.144, mass: 11.72, eccentricity: 0.0039, inclination: 0.128 },
+      { id: 'titania', name: 'Titania', radius: 788.4, distanceKm: 435910, orbitalPeriod: 8.706, mass: 35.27, eccentricity: 0.0011, inclination: 0.079 },
+      { id: 'oberon', name: 'Oberon', radius: 761.4, distanceKm: 583520, orbitalPeriod: 13.463, mass: 30.14, eccentricity: 0.0014, inclination: 0.068 },
+      // Outer irregular (prograde)
+      { id: 'margaret', name: 'Margaret', radius: 10.0, distanceKm: 14345000, orbitalPeriod: 1687.0, mass: 0.001 },
+      // Outer irregular (retrograde)
+      { id: 'francisco', name: 'Francisco', radius: 11.0, distanceKm: 4276000, orbitalPeriod: -266.6, mass: 0.002 },
+      { id: 'caliban', name: 'Caliban', radius: 36.0, distanceKm: 7231000, orbitalPeriod: -579.7, mass: 0.25 },
+      { id: 'stephano', name: 'Stephano', radius: 16.0, distanceKm: 8004000, orbitalPeriod: -677.4, mass: 0.003 },
+      { id: 'trinculo', name: 'Trinculo', radius: 9.0, distanceKm: 8504000, orbitalPeriod: -749.2, mass: 0.001 },
+      { id: 'sycorax', name: 'Sycorax', radius: 75.0, distanceKm: 12179000, orbitalPeriod: -1288.3, mass: 2.30 },
+      { id: 'prospero', name: 'Prospero', radius: 25.0, distanceKm: 16256000, orbitalPeriod: -1978.0, mass: 0.007 },
+      { id: 'setebos', name: 'Setebos', radius: 24.0, distanceKm: 17418000, orbitalPeriod: -2225.0, mass: 0.006 },
+      { id: 'ferdinand', name: 'Ferdinand', radius: 10.0, distanceKm: 20901000, orbitalPeriod: -2887.0, mass: 0.001 },
     ],
     texture: 'uranus.jpg',
     color: '#7ec8d4',
@@ -322,10 +341,23 @@ export const PLANETS: PlanetData[] = [
     hasRings: true,
     atmosphere: ['H2 80%', 'He 19%', 'CH4 1.5%'],
     moons: [
-      {
-        id: 'triton', name: 'Triton', radius: 1353.4, distanceKm: 354759,
-        orbitalPeriod: -5.877, mass: 214.0, eccentricity: 0.000016, inclination: 156.885,
-      },
+      // Inner moons (in order by distance)
+      { id: 'naiad', name: 'Naiad', radius: 33.0, distanceKm: 48227, orbitalPeriod: 0.294, mass: 0.002 },
+      { id: 'thalassa', name: 'Thalassa', radius: 41.0, distanceKm: 50075, orbitalPeriod: 0.311, mass: 0.004 },
+      { id: 'despina', name: 'Despina', radius: 75.0, distanceKm: 52526, orbitalPeriod: 0.335, mass: 0.021 },
+      { id: 'galatea', name: 'Galatea', radius: 87.4, distanceKm: 61953, orbitalPeriod: 0.429, mass: 0.038 },
+      { id: 'larissa', name: 'Larissa', radius: 97.0, distanceKm: 73548, orbitalPeriod: 0.555, mass: 0.043 },
+      { id: 'hippocamp', name: 'Hippocamp', radius: 17.0, distanceKm: 105300, orbitalPeriod: 0.950, mass: 0.001 },
+      { id: 'proteus', name: 'Proteus', radius: 210.0, distanceKm: 117647, orbitalPeriod: 1.122, mass: 0.50 },
+      // Triton — retrograde
+      { id: 'triton', name: 'Triton', radius: 1353.4, distanceKm: 354759, orbitalPeriod: -5.877, mass: 214.0, eccentricity: 0.000016, inclination: 156.885 },
+      // Outer moons
+      { id: 'nereid', name: 'Nereid', radius: 170.0, distanceKm: 5513400, orbitalPeriod: 360.14, mass: 0.31, eccentricity: 0.7512 },
+      { id: 'halimede', name: 'Halimede', radius: 31.0, distanceKm: 15686000, orbitalPeriod: -1879.1, mass: 0.008 },
+      { id: 'sao', name: 'Sao', radius: 22.0, distanceKm: 22422000, orbitalPeriod: 2913.5, mass: 0.003 },
+      { id: 'laomedeia', name: 'Laomedeia', radius: 21.0, distanceKm: 23571000, orbitalPeriod: 3171.3, mass: 0.003 },
+      { id: 'psamathe', name: 'Psamathe', radius: 20.0, distanceKm: 48096000, orbitalPeriod: -9074.3, mass: 0.002 },
+      { id: 'neso', name: 'Neso', radius: 30.0, distanceKm: 49285000, orbitalPeriod: -9374.0, mass: 0.004 },
     ],
     texture: 'neptune.jpg',
     color: '#3a5fad',

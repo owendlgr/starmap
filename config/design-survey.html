@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StarMap — Design Survey</title>
+<style>
+  :root {
+    --bg: #0a0a12;
+    --surface: #12121e;
+    --border: #1e1e2e;
+    --accent: #00d4ff;
+    --accent-dim: #00d4ff22;
+    --text: #e0e0e8;
+    --text-dim: #8888a0;
+    --danger: #ff4466;
+    --success: #00ff88;
+    --radius: 8px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,18,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header h1 {
+    font-size: 20px; font-weight: 600;
+    background: linear-gradient(135deg, var(--accent), #8866ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header .subtitle { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+  .header-actions { display: flex; gap: 10px; }
+  .progress-bar {
+    position: sticky; top: 68px; z-index: 99;
+    height: 3px; background: var(--border);
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), #8866ff);
+    transition: width 0.3s ease; width: 0%;
+  }
+  .container { max-width: 860px; margin: 0 auto; padding: 32px 24px 120px; }
+  .instructions {
+    background: var(--accent-dim);
+    border: 1px solid #00d4ff33;
+    border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 40px;
+    font-size: 14px; color: #aaddff;
+  }
+  .instructions strong { color: var(--accent); }
+  .section {
+    margin-bottom: 48px;
+  }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-number {
+    background: linear-gradient(135deg, var(--accent), #8866ff);
+    color: #000; font-weight: 700; font-size: 13px;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-title { font-size: 18px; font-weight: 600; }
+  .question-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px; margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .question-card:hover { border-color: #2a2a3e; }
+  .question-card.answered { border-color: #00ff8844; }
+  .question-top {
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;
+  }
+  .q-number {
+    color: var(--accent); font-size: 13px; font-weight: 600;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    min-width: 28px; padding-top: 1px;
+  }
+  .q-text { font-size: 15px; font-weight: 500; }
+  .answer-area { margin-left: 38px; }
+  textarea {
+    width: 100%; min-height: 80px; padding: 12px 14px;
+    background: #0d0d18; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 14px;
+    font-family: inherit; resize: vertical; transition: border-color 0.2s;
+  }
+  textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  textarea::placeholder { color: var(--text-dim); }
+  .upload-zone {
+    margin-top: 10px; padding: 14px;
+    border: 2px dashed var(--border); border-radius: 6px;
+    text-align: center; cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    font-size: 13px; color: var(--text-dim);
+  }
+  .upload-zone:hover {
+    border-color: var(--accent); background: var(--accent-dim);
+  }
+  .upload-zone input[type="file"] { display: none; }
+  .upload-zone .icon { font-size: 20px; margin-bottom: 4px; display: block; }
+  .preview-grid {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+  }
+  .preview-item {
+    position: relative; width: 100px; height: 100px;
+    border-radius: 6px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .preview-item img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .preview-item .remove-btn {
+    position: absolute; top: 2px; right: 2px;
+    background: rgba(0,0,0,0.7); color: var(--danger);
+    border: none; border-radius: 50%; width: 22px; height: 22px;
+    cursor: pointer; font-size: 14px; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .btn {
+    padding: 10px 20px; border: none; border-radius: 6px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s; font-family: inherit;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #6644ff);
+    color: #000;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px #00d4ff33; }
+  .btn-secondary {
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+  .btn-danger {
+    background: transparent; color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+  .bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(10,10,18,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 100;
+  }
+  .progress-text { font-size: 13px; color: var(--text-dim); }
+  .progress-text span { color: var(--accent); font-weight: 600; }
+  .bottom-actions { display: flex; gap: 10px; }
+  .toc {
+    position: fixed; left: 16px; top: 50%; transform: translateY(-50%);
+    z-index: 50; display: flex; flex-direction: column; gap: 6px;
+  }
+  .toc a {
+    display: block; width: 10px; height: 10px;
+    border-radius: 50%; background: var(--border);
+    transition: all 0.2s; text-decoration: none;
+    position: relative;
+  }
+  .toc a:hover, .toc a.active {
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  }
+  .toc a .tooltip {
+    position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 4px; white-space: nowrap;
+    font-size: 12px; color: var(--text); pointer-events: none;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .toc a:hover .tooltip { opacity: 1; }
+  .url-input {
+    width: 100%; padding: 10px 14px; margin-top: 8px;
+    background: #0d0d18; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 13px;
+    font-family: inherit;
+  }
+  .url-input:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  .url-input::placeholder { color: var(--text-dim); }
+  .or-divider {
+    text-align: center; font-size: 12px; color: var(--text-dim);
+    margin: 6px 0;
+  }
+  @media (max-width: 768px) {
+    .toc { display: none; }
+    .container { padding: 20px 16px 120px; }
+    .header { padding: 12px 16px; }
+    .bottom-bar { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>StarMap — Design & Requirements Survey</h1>
+    <div class="subtitle">108 questions across 12 sections — answer what you can, skip what you're unsure about</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="saveProgress()">Save Draft</button>
+  </div>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+<nav class="toc" id="toc"></nav>
+
+<div class="container">
+  <div class="instructions">
+    <strong>How to use this survey:</strong> Answer each question in the text box. For visual reference questions,
+    upload screenshots/images or paste a URL. Your progress auto-saves to your browser. When done, click
+    <strong>"Export Answers"</strong> at the bottom to download the completed JSON. Send that file back and I'll start building.
+  </div>
+  <div id="surveyBody"></div>
+</div>
+
+<div class="bottom-bar">
+  <div class="progress-text">
+    <span id="answeredCount">0</span> of <span id="totalCount">0</span> answered
+  </div>
+  <div class="bottom-actions">
+    <button class="btn btn-danger" onclick="clearAll()">Clear All</button>
+    <button class="btn btn-secondary" onclick="saveProgress()">Save Draft</button>
+    <button class="btn btn-primary" onclick="exportAnswers()">Export Answers (JSON)</button>
+  </div>
+</div>
+
+<script>
+const surveyData = {
+  sections: [
+    {
+      title: "Overall Vision & Identity",
+      questions: [
+        { id:1, q:"What is the name of this product? (StarMap, something else?)", hasImage:false },
+        { id:2, q:"One-sentence tagline or mission statement for the dashboard?", hasImage:false },
+        { id:3, q:"Who is the primary audience? (researchers, hobbyists, students, general public, all?)", hasImage:false },
+        { id:4, q:"Should this feel like a NASA/ESA mission control tool, a Bloomberg terminal for space, a planetarium app, or something else? Describe the vibe.", hasImage:true },
+        { id:5, q:"Is this a personal project, open-source community tool, or commercial product?", hasImage:false },
+        { id:6, q:"What existing tools/sites do you consider competition or inspiration beyond worldmonitor.app? (e.g., Stellarium, SpaceEngine, NASA Eyes, Celestia, Universe Sandbox)", hasImage:true },
+        { id:7, q:"Should the dashboard have a landing/marketing page, or go straight into the app?", hasImage:false },
+        { id:8, q:"Do you want user accounts/login, or is this fully public with no auth?", hasImage:false }
+      ]
+    },
+    {
+      title: "UI Framework & Layout",
+      questions: [
+        { id:9, q:"Provide a screenshot of the worldmonitor.app layout you want to match.", hasImage:true },
+        { id:10, q:"worldmonitor.app uses a left sidebar nav + top bar + main viewport pattern. Should StarMap follow this exactly, or adapt it?", hasImage:false },
+        { id:11, q:"Should the sidebar be collapsible/hideable to maximize the 3D viewport?", hasImage:false },
+        { id:12, q:"Should the top nav show the current section (Stars, Planets, Galaxies, Missions, Streams) as tabs, breadcrumbs, or a dropdown?", hasImage:true },
+        { id:13, q:"Should the layout be full-bleed (viewport fills entire screen) or have visible margins/panels?", hasImage:false },
+        { id:14, q:"Do you want a persistent footer with status info (data source, last updated, coordinates)?", hasImage:false },
+        { id:15, q:"Should there be a mini-map or overview indicator showing where you are in the larger context?", hasImage:false },
+        { id:16, q:"Should panels/info cards slide in from the side, appear as modals, or be inline?", hasImage:true }
+      ]
+    },
+    {
+      title: "Color Scheme, Typography & Visual Style",
+      questions: [
+        { id:17, q:"Dark mode only, light mode only, or toggle?", hasImage:false },
+        { id:18, q:"Primary accent color? (e.g., cyan/teal like mission control, blue, white, custom?)", hasImage:true },
+        { id:19, q:"Secondary accent color for highlights, selections, active states?", hasImage:false },
+        { id:20, q:"Background: pure black (#000), near-black (#0a0a0f), dark blue-black (#0d1117), or other?", hasImage:false },
+        { id:21, q:"Typography: monospace/technical (like terminal), clean sans-serif (Inter/Helvetica), or mixed?", hasImage:false },
+        { id:22, q:"Should data readouts use a monospace/tabular font (like HUD displays)?", hasImage:false },
+        { id:23, q:"Do you want subtle grid lines or HUD-style overlays on the 3D viewports?", hasImage:true },
+        { id:24, q:"How should star labels appear? Always visible, on hover, on zoom threshold, or toggleable?", hasImage:false },
+        { id:25, q:"Font size philosophy: dense/compact (lots of data visible) or spacious/readable?", hasImage:false },
+        { id:26, q:"Should there be any scan-line, CRT, or retro-sci-fi effects, or keep it clean and modern?", hasImage:false }
+      ]
+    },
+    {
+      title: "Star Map (Nearby Stars View)",
+      questions: [
+        { id:27, q:"Maximum radius from Sol to display? (e.g., 20 ly, 50 ly, 100 ly, user-adjustable?)", hasImage:false },
+        { id:28, q:"What star catalogs should we source? (Hipparcos, Gaia DR3, SIMBAD, custom combination?)", hasImage:false },
+        { id:29, q:"Should stars be colored by spectral type (OBAFGKM) accurately, or use a simplified palette?", hasImage:false },
+        { id:30, q:"Should star size/brightness in the view reflect actual luminosity, apparent magnitude, or be uniform?", hasImage:false },
+        { id:31, q:"When zoomed out, should stars show: name only, name + distance, name + spectral type, or configurable?", hasImage:false },
+        { id:32, q:"Should there be a 3D grid/axis indicator showing the galactic plane and distance scale?", hasImage:true },
+        { id:33, q:"Should constellation lines be visible in this view, or is this purely a distance-based 3D map?", hasImage:false },
+        { id:34, q:"When you click a star and zoom in, what info should the detail panel show? (spectral class, distance, luminosity, known planets, habitable zone, binary companion, links to SIMBAD/NASA?)", hasImage:false },
+        { id:35, q:"For stars with known exoplanets, should the planetary system view use real orbital data or simplified?", hasImage:false },
+        { id:36, q:"Should the star map support filtering? (e.g., show only stars with exoplanets, only G-type, only within 10 ly?)", hasImage:false },
+        { id:37, q:"Should there be a 2D flat projection option or 3D only?", hasImage:false },
+        { id:38, q:"How should binary/multiple star systems be represented?", hasImage:false },
+        { id:39, q:"Should there be distance measurement tools (click two stars to see distance)?", hasImage:false },
+        { id:40, q:"Provide any reference images of how you want the star map to look.", hasImage:true }
+      ]
+    },
+    {
+      title: "Planet View (Solar System)",
+      questions: [
+        { id:41, q:"The solar system is extremely sparse at true scale (planets become invisible). Do you want: (A) true scale with smart zoom levels, (B) logarithmic scale, (C) exaggerated planet sizes with true orbital distances, or (D) multiple scale modes the user can toggle?", hasImage:false },
+        { id:42, q:"Which objects must be included? (8 planets, Pluto, Ceres, Eris, Haumea, Makemake, Sedna, asteroid belt, Kuiper belt, Oort cloud, major comets, Trojans — list all you want)", hasImage:false },
+        { id:43, q:"Should orbits be animated in real-time (or accelerated time), or static with current positions?", hasImage:false },
+        { id:44, q:"Should there be a time slider to see planet positions at any date?", hasImage:false },
+        { id:45, q:"When you click a planet and zoom in, should it show: (A) just the planet with moons orbiting, (B) a detailed surface view with texture, (C) both with a transition?", hasImage:false },
+        { id:46, q:"For planet close-ups, do you want high-res NASA textures (8K+), or are 2K textures acceptable?", hasImage:false },
+        { id:47, q:"Should rings (Saturn, Uranus, Neptune, Jupiter) be rendered as particle systems, textured planes, or simplified geometry?", hasImage:false },
+        { id:48, q:"Should moons be labeled by default or only on hover/click?", hasImage:false },
+        { id:49, q:"How many moons per planet? (Major only like 5-10 per planet, or all known 200+ for Jupiter/Saturn?)", hasImage:false },
+        { id:50, q:"You mentioned Eve Online system maps — provide screenshots of the specific Eve UI elements you want.", hasImage:true },
+        { id:51, q:"Should asteroid/Kuiper belts be rendered as particle clouds, individual dots, or statistical representation?", hasImage:false },
+        { id:52, q:"Should the planet detail panel show: orbital parameters, atmospheric composition, physical properties, exploration history, or all?", hasImage:false },
+        { id:53, q:"Should spacecraft currently at/near planets be shown? (e.g., Juno at Jupiter, Perseverance on Mars)", hasImage:false },
+        { id:54, q:"Should the solar system view be accessible from the star map? (click Sol → zooms into solar system?)", hasImage:false }
+      ]
+    },
+    {
+      title: "Galaxy Map",
+      questions: [
+        { id:55, q:"What radius of galaxies to show? (Local Group only, Virgo Supercluster, observable universe?)", hasImage:false },
+        { id:56, q:"Where should 3D galaxy models come from? (procedurally generated, real 3D scans, artist models, combination?)", hasImage:false },
+        { id:57, q:"Should the Milky Way be shown as a 3D model with our position marked, or just as center point?", hasImage:false },
+        { id:58, q:"Should galaxies be clickable with detail info? If so, what? (type, distance, mass, redshift, Hubble images?)", hasImage:false },
+        { id:59, q:"Should there be large-scale structure visible? (galaxy filaments, voids, superclusters?)", hasImage:false },
+        { id:60, q:"Should there be a scale indicator showing megaparsecs / millions of light-years?", hasImage:false },
+        { id:61, q:"Provide reference images for how you want galaxies to look in the map view.", hasImage:true }
+      ]
+    },
+    {
+      title: "Space Mission Dashboard",
+      questions: [
+        { id:62, q:"Primary data source for missions? (NASA API, SpaceX API, Launch Library 2, manual curation, combination?)", hasImage:false },
+        { id:63, q:"How far back should mission history go? (All from 1957, post-2000, just active/future?)", hasImage:false },
+        { id:64, q:"Should missions be categorized by: agency, destination, type (crewed/robotic/cargo), status, or all with filters?", hasImage:false },
+        { id:65, q:"Mission sidebar format: scrollable list, timeline, calendar view, or searchable cards?", hasImage:true },
+        { id:66, q:"When no mission is selected, what should the globe show? (Earth spinning, launch sites marked, blank?)", hasImage:false },
+        { id:67, q:"For Earth-orbit missions, what data should overlay the globe? (trajectory path, orbit type, ground track, coverage area?)", hasImage:false },
+        { id:68, q:"For deep-space missions (Voyager, New Horizons), how should the viewport transition? (auto-zoom out, split view, replace globe?)", hasImage:false },
+        { id:69, q:"Should mission trajectory data be real (NASA Horizons/SPICE kernels) or approximate/simplified?", hasImage:false },
+        { id:70, q:"Should there be a mission timeline slider to replay from launch to current/end?", hasImage:false },
+        { id:71, q:"What mission details should the panel include? (launch date, rocket, stages, crew, payload, status, telemetry, photos, mission patches, cost, NASA links — list all you want)", hasImage:false },
+        { id:72, q:"Should there be a 'live' indicator for currently active missions?", hasImage:false },
+        { id:73, q:"For Voyager-type missions — should the trajectory show all planetary flybys with labeled waypoints?", hasImage:false },
+        { id:74, q:"Should future planned missions (Artemis, Mars Sample Return, Europa Clipper) be included with projected data?", hasImage:false },
+        { id:75, q:"Provide reference images for mission dashboard layout and trajectory visualization.", hasImage:true }
+      ]
+    },
+    {
+      title: "Live Mission Streams",
+      questions: [
+        { id:76, q:"Should streams auto-play or require user click to start?", hasImage:false },
+        { id:77, q:"Stream layout: grid of thumbnails, single featured + list, worldmonitor-style tiled view?", hasImage:true },
+        { id:78, q:"Should streams be categorized? (ISS, launches, telescopes, mission control, educational?)", hasImage:false },
+        { id:79, q:"Should there be a schedule showing upcoming live events (launches, EVAs, etc.)?", hasImage:false },
+        { id:80, q:"Should the ISS stream include a real-time position overlay showing where ISS is on a map?", hasImage:false },
+        { id:81, q:"How should offline/ended streams be handled? (hide, show replay, show thumbnail with 'offline' badge?)", hasImage:false },
+        { id:82, q:"Should there be a picture-in-picture mode to watch a stream while using other dashboard sections?", hasImage:false },
+        { id:83, q:"Provide a screenshot of the worldmonitor.app stream layout you want to match.", hasImage:true }
+      ]
+    },
+    {
+      title: "Data & Performance",
+      questions: [
+        { id:84, q:"Should data be static (bundled at build time), fetched from APIs at runtime, or hybrid?", hasImage:false },
+        { id:85, q:"Are you willing to run Python scripts periodically to update data, or should everything auto-update?", hasImage:false },
+        { id:86, q:"Target devices: desktop only, or must it work on tablets/mobile too?", hasImage:false },
+        { id:87, q:"Performance priority: visual fidelity first (accept slower load), or speed first (simplify if needed)?", hasImage:false },
+        { id:88, q:"Maximum acceptable initial load time? (2s, 5s, 10s, don't care if it's beautiful?)", hasImage:false },
+        { id:89, q:"Should textures load progressively (low-res first, then high-res on zoom)?", hasImage:false },
+        { id:90, q:"Do you want WebGPU support for better performance, or stick with WebGL for compatibility?", hasImage:false }
+      ]
+    },
+    {
+      title: "Interactivity & Navigation",
+      questions: [
+        { id:91, q:"Should there be a global search bar that searches across all sections (stars, planets, missions, galaxies)?", hasImage:false },
+        { id:92, q:"Should there be keyboard shortcuts for navigation? (e.g., 1-5 for sections, Esc to go back, Space to pause?)", hasImage:false },
+        { id:93, q:"How should back-navigation work after zooming into a star/planet? (back button, click empty space, breadcrumb, Esc?)", hasImage:false },
+        { id:94, q:"Should camera transitions be smooth animated or instant?", hasImage:false },
+        { id:95, q:"Should there be a 'tour' or guided exploration mode?", hasImage:false },
+        { id:96, q:"Should there be bookmarks/favorites for objects the user wants to revisit?", hasImage:false },
+        { id:97, q:"Should the URL update to reflect current view state (deep linking to specific objects)?", hasImage:false }
+      ]
+    },
+    {
+      title: "Deployment & Technical",
+      questions: [
+        { id:98, q:"Where will this be hosted? (Vercel, self-hosted, other?)", hasImage:false },
+        { id:99, q:"Do you need a backend/database, or is this purely frontend with static data + external APIs?", hasImage:false },
+        { id:100, q:"Should the 3D engine remain Three.js (react-three-fiber), or are you open to alternatives? (Babylon.js, CesiumJS?)", hasImage:false },
+        { id:101, q:"Budget for external APIs? Some (NASA Horizons) are free, others (high-res textures, real-time launch data) may cost.", hasImage:false },
+        { id:102, q:"Should the app work offline at all, or always require internet?", hasImage:false },
+        { id:103, q:"Any accessibility requirements? (screen reader support, colorblind modes, etc.)", hasImage:false }
+      ]
+    },
+    {
+      title: "Priority & Phasing",
+      questions: [
+        { id:104, q:"Rank these sections 1-5 by build priority: Star Map, Planet View, Galaxy Map, Mission Dashboard, Live Streams", hasImage:false },
+        { id:105, q:"Is there a deadline or timeline for a v1 launch?", hasImage:false },
+        { id:106, q:"What is the minimum viable version? (e.g., just star map + planet view working perfectly?)", hasImage:false },
+        { id:107, q:"Are there any features NOT listed above that you definitely want included?", hasImage:false },
+        { id:108, q:"Anything from the current build that you want to explicitly KEEP as-is?", hasImage:false }
+      ]
+    }
+  ]
+};
+
+const STORAGE_KEY = 'starmap-survey-draft';
+let answers = {};
+let imageData = {};
+
+function init() {
+  loadDraft();
+  renderSurvey();
+  renderTOC();
+  updateProgress();
+}
+
+function loadDraft() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      answers = parsed.answers || {};
+      imageData = parsed.imageData || {};
+    }
+  } catch(e) {}
+}
+
+function saveDraft() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ answers, imageData }));
+  } catch(e) {}
+}
+
+function renderSurvey() {
+  const body = document.getElementById('surveyBody');
+  let html = '';
+  surveyData.sections.forEach((section, si) => {
+    html += `<div class="section" id="section-${si}">`;
+    html += `<div class="section-header">
+      <div class="section-number">${si+1}</div>
+      <div class="section-title">${section.title}</div>
+    </div>`;
+    section.questions.forEach(q => {
+      const val = answers[q.id] || '';
+      const answeredClass = val.trim() ? 'answered' : '';
+      html += `<div class="question-card ${answeredClass}" id="card-${q.id}">
+        <div class="question-top">
+          <div class="q-number">${q.id}.</div>
+          <div class="q-text">${q.q}</div>
+        </div>
+        <div class="answer-area">
+          <textarea id="a-${q.id}" placeholder="Type your answer here..."
+            oninput="onAnswer(${q.id})">${escHtml(val)}</textarea>`;
+      if (q.hasImage) {
+        html += `
+          <div class="or-divider">— attach reference images or paste URL —</div>
+          <input type="text" class="url-input" id="url-${q.id}"
+            placeholder="Paste image URL here..."
+            value="${escHtml((imageData[q.id]||{}).url||'')}"
+            oninput="onImageUrl(${q.id})">
+          <div class="upload-zone" onclick="document.getElementById('file-${q.id}').click()">
+            <span class="icon">+</span>
+            Click or drag to upload images
+            <input type="file" id="file-${q.id}" accept="image/*" multiple
+              onchange="onFileUpload(${q.id}, this)">
+          </div>
+          <div class="preview-grid" id="previews-${q.id}"></div>`;
+      }
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+  });
+  body.innerHTML = html;
+  document.getElementById('totalCount').textContent = getTotalQuestions();
+
+  // Restore image previews
+  Object.keys(imageData).forEach(id => {
+    if (imageData[id].files) renderPreviews(parseInt(id));
+  });
+}
+
+function renderTOC() {
+  const toc = document.getElementById('toc');
+  let html = '';
+  surveyData.sections.forEach((s, i) => {
+    html += `<a href="#section-${i}" class="toc-dot" data-section="${i}">
+      <span class="tooltip">${s.title}</span>
+    </a>`;
+  });
+  toc.innerHTML = html;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getTotalQuestions() {
+  return surveyData.sections.reduce((sum, s) => sum + s.questions.length, 0);
+}
+
+function getAnsweredCount() {
+  return Object.values(answers).filter(a => a && a.trim()).length;
+}
+
+function onAnswer(id) {
+  const el = document.getElementById('a-' + id);
+  answers[id] = el.value;
+  const card = document.getElementById('card-' + id);
+  card.classList.toggle('answered', el.value.trim().length > 0);
+  updateProgress();
+  saveDraft();
+}
+
+function onImageUrl(id) {
+  const url = document.getElementById('url-' + id).value;
+  if (!imageData[id]) imageData[id] = {};
+  imageData[id].url = url;
+  saveDraft();
+}
+
+function onFileUpload(id, input) {
+  if (!imageData[id]) imageData[id] = {};
+  if (!imageData[id].files) imageData[id].files = [];
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imageData[id].files.push({
+        name: file.name,
+        data: e.target.result
+      });
+      renderPreviews(id);
+      saveDraft();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPreviews(id) {
+  const container = document.getElementById('previews-' + id);
+  if (!container || !imageData[id] || !imageData[id].files) return;
+  container.innerHTML = imageData[id].files.map((f, i) =>
+    `<div class="preview-item">
+      <img src="${f.data}" alt="${f.name}">
+      <button class="remove-btn" onclick="removeImage(${id},${i})">×</button>
+    </div>`
+  ).join('');
+}
+
+function removeImage(id, index) {
+  imageData[id].files.splice(index, 1);
+  renderPreviews(id);
+  saveDraft();
+}
+
+function updateProgress() {
+  const total = getTotalQuestions();
+  const answered = getAnsweredCount();
+  document.getElementById('answeredCount').textContent = answered;
+  document.getElementById('progressFill').style.width =
+    (total > 0 ? (answered/total)*100 : 0) + '%';
+}
+
+function saveProgress() {
+  saveDraft();
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = 'Saved!';
+  btn.style.borderColor = 'var(--success)';
+  btn.style.color = 'var(--success)';
+  setTimeout(() => {
+    btn.textContent = orig;
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }, 1500);
+}
+
+function clearAll() {
+  if (!confirm('Clear all answers? This cannot be undone.')) return;
+  answers = {};
+  imageData = {};
+  localStorage.removeItem(STORAGE_KEY);
+  renderSurvey();
+  updateProgress();
+}
+
+function exportAnswers() {
+  const output = {
+    exportDate: new Date().toISOString(),
+    surveyTitle: "StarMap Design & Requirements Survey",
+    totalAnswered: getAnsweredCount(),
+    totalQuestions: getTotalQuestions(),
+    sections: surveyData.sections.map(section => ({
+      section: section.title,
+      questions: section.questions.map(q => {
+        const result = {
+          id: q.id,
+          question: q.q,
+          answer: answers[q.id] || null
+        };
+        if (q.hasImage && imageData[q.id]) {
+          if (imageData[q.id].url) result.referenceUrl = imageData[q.id].url;
+          if (imageData[q.id].files && imageData[q.id].files.length) {
+            result.uploadedImages = imageData[q.id].files.map(f => f.name);
+            result.imageData = imageData[q.id].files.map(f => f.data);
+          }
+        }
+        return result;
+      })
+    }))
+  };
+  const blob = new Blob([JSON.stringify(output, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'starmap-survey-answers.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Scroll spy for TOC
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      const idx = id.replace('section-','');
+      document.querySelectorAll('.toc-dot').forEach(d => d.classList.remove('active'));
+      const dot = document.querySelector(`.toc-dot[data-section="${idx}"]`);
+      if (dot) dot.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+
+window.addEventListener('DOMContentLoaded', () => {
+  init();
+  document.querySelectorAll('.section').forEach(s => observer.observe(s));
+});
+</script>
+</body>
+</html>

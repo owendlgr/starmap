@@ -318,7 +318,7 @@ function StarLabels({ stars }: { stars: Star[] }) {
   const { showLabels, scaleUnit, theme, zoomTarget, flattenAmount } = useStore();
   const dark = theme === 'dark';
   const txt  = dark ? '#e8e0d0' : '#1a1208';
-  const sub  = dark ? '#9a8e7e' : '#5a4e3e';
+  const sub  = dark ? '#c4b8aa' : '#7a6e60';
   const shad = dark ? '#0a0806' : '#f0ece0';
 
   // Show all star labels, cap at 500 for performance
@@ -748,7 +748,7 @@ export function StarMap() {
           <div style={{
             fontFamily: 'var(--font-mono)', fontSize: '0.7rem', letterSpacing: '0.15em',
             textTransform: 'uppercase',
-            color: theme === 'dark' ? '#9a8e7e' : '#7a6e5e',
+            color: theme === 'dark' ? '#c4b8aa' : '#9a8e80',
           }}>
             Loading stellar catalog...
           </div>

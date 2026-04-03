@@ -3,8 +3,8 @@ import './globals.css';
 import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata: Metadata = {
-  title: 'StarData — Interactive Space Explorer',
-  description: 'Explore stars, planets, galaxies, and space missions with real astronomical data from NASA, ESA, and international observatories.',
+  title: 'StarData.Space — Scientific Space Dashboard',
+  description: 'Comprehensive visual dashboard for space data — missions, planets, stars, galaxies, and live streams. Built with real astronomical data from NASA, ESA, JPL, Hipparcos, and Gaia DR3.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

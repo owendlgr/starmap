@@ -45,7 +45,7 @@ function Moon({ moon, planetRadius }: { moon: MoonData; planetRadius: number }) 
       {/* Orbit ring */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <ringGeometry args={[orbitR - 0.005, orbitR + 0.005, 64]} />
-        <meshBasicMaterial color="#8888a0" transparent opacity={0.15} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#9999b8" transparent opacity={0.28} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Moon sphere */}
@@ -68,7 +68,7 @@ function Moon({ moon, planetRadius }: { moon: MoonData; planetRadius: number }) 
                 fontSize: '0.5rem',
                 fontWeight: 600,
                 letterSpacing: '0.06em',
-                color: moon.radius > 200 ? '#b0b0c8' : '#8888a0',
+                color: moon.radius > 200 ? '#d0d0e4' : '#aaaabc',
                 textShadow: '0 0 4px rgba(0,0,0,0.9)',
               }}
             >

@@ -3,6 +3,8 @@
 import { useMemo } from 'react';
 import { Line } from '@react-three/drei';
 import { PLANETS } from '@/lib/data/planets';
+import { DWARF_PLANETS } from '@/lib/data/dwarfPlanets';
+import { usePlanetStore } from '@/lib/stores/planetStore';
 import { orbitPoints } from '@/lib/orbitalMechanics';
 import { scaledDistance } from './SolarSystem';
 import type { PlanetData } from '@/lib/types';
@@ -47,9 +49,14 @@ function OrbitLine({ planet }: { planet: PlanetData }) {
 }
 
 export function OrbitLines() {
+  const showDwarfPlanets = usePlanetStore((s) => s.showDwarfPlanets);
+
   return (
     <group>
       {PLANETS.map((planet) => (
+        <OrbitLine key={planet.id} planet={planet} />
+      ))}
+      {showDwarfPlanets && DWARF_PLANETS.map((planet) => (
         <OrbitLine key={planet.id} planet={planet} />
       ))}
     </group>

@@ -1,42 +1,122 @@
 'use client';
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import type { Mission } from '@/lib/types';
+import { loadTrajectories, getTrajectory, type TrajectoryDatabase } from '@/lib/trajectoryLoader';
 
+/**
+ * Convert geographic lat/lng to Three.js Vector3.
+ * Verified to match THREE.SphereGeometry UV mapping exactly.
+ */
 function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector3 {
-  const phi = (lat * Math.PI) / 180;
-  const theta = (lng * Math.PI) / 180;
+  const phi = (90 - lat) * (Math.PI / 180);
+  const theta = (lng + 180) * (Math.PI / 180);
   return new THREE.Vector3(
-    radius * Math.cos(phi) * Math.cos(theta),
-    radius * Math.sin(phi),
-    radius * Math.cos(phi) * Math.sin(theta)
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
   );
 }
 
-/** Determine arc height multiplier based on orbit type */
-function getArcHeight(orbit: string | undefined): number {
-  if (!orbit) return 0.3;
-  const lower = orbit.toLowerCase();
-  if (lower.includes('low earth') || lower.includes('leo') || lower.includes('suborbital')) return 0.15;
-  if (lower.includes('geostationary') || lower.includes('geo') || lower.includes('gto') || lower.includes('transfer')) return 0.6;
-  if (lower.includes('lunar') || lower.includes('heliocentric') || lower.includes('mars') || lower.includes('l1') || lower.includes('l2')) return 0.8;
-  if (lower.includes('sun-synchronous') || lower.includes('medium earth') || lower.includes('meo')) return 0.35;
-  return 0.3;
+/** Get orbit altitude and inclination for computed trajectories */
+function getOrbitParams(orbit: string | undefined): { height: number; inclination: number } {
+  if (!orbit) return { height: 0.25, inclination: 28.5 };
+  const o = orbit.toLowerCase();
+  if (o.includes('suborbital')) return { height: 0.06, inclination: 28.5 };
+  if (o.includes('low earth') || o.includes('leo')) return { height: 0.12, inclination: 51.6 };
+  if (o.includes('sun-synchronous') || o.includes('sso')) return { height: 0.15, inclination: 97.4 };
+  if (o.includes('medium earth') || o.includes('meo')) return { height: 0.3, inclination: 55.0 };
+  if (o.includes('geostationary') || o.includes('geo') || o.includes('gto')) return { height: 0.5, inclination: 0 };
+  if (o.includes('lunar') || o.includes('moon')) return { height: 0.9, inclination: 28.5 };
+  if (o.includes('heliocentric') || o.includes('mars') || o.includes('l1') || o.includes('l2') || o.includes('interstellar'))
+    return { height: 1.5, inclination: 28.5 };
+  return { height: 0.25, inclination: 28.5 };
 }
 
-/** Get arc color based on mission status */
-function getStatusColor(status: string): THREE.Color {
-  const lower = status.toLowerCase();
-  if (lower.includes('partial')) return new THREE.Color(0xf39c12);
-  if (lower.includes('success')) return new THREE.Color(0x2ecc71);
-  if (lower.includes('fail')) return new THREE.Color(0xe74c3c);
-  return new THREE.Color(0x8888a0);
+/** Color based on mission status */
+function getStatusColor(status: string): string {
+  const s = status.toLowerCase();
+  if (s.includes('success')) return '#44ff88';
+  if (s.includes('partial')) return '#f39c12';
+  if (s.includes('fail')) return '#e74c3c';
+  if (s.includes('active') || s.includes('transit')) return '#44ff88';
+  if (s.includes('go') || s.includes('tbd')) return '#3b82f6';
+  return '#8888a0';
 }
 
-interface ArcData {
-  id: string;
-  curve: THREE.QuadraticBezierCurve3;
-  color: THREE.Color;
+/**
+ * Generate a clean arc from launch site upward.
+ * Simple quadratic bezier — launch point → apex → end point.
+ */
+function generateArcPoints(
+  lat: number, lng: number, earthRadius: number,
+  height: number, inclination: number
+): THREE.Vector3[] {
+  const numPoints = 48;
+  const points: THREE.Vector3[] = [];
+
+  const startPos = latLngToVector3(lat, lng, earthRadius * 1.002);
+  const startDir = startPos.clone().normalize();
+
+  // Build local frame at launch site
+  const up = startDir.clone();
+  let east = new THREE.Vector3(0, 1, 0).cross(up);
+  if (east.length() < 0.01) east = new THREE.Vector3(1, 0, 0).cross(up);
+  east.normalize();
+  const north = up.clone().cross(east).normalize();
+
+  // Launch azimuth from inclination
+  const incRad = inclination * (Math.PI / 180);
+  const launchDir = east.clone().multiplyScalar(Math.cos(incRad))
+    .add(north.clone().multiplyScalar(Math.sin(incRad))).normalize();
+
+  // Arc: smooth rise from surface, curving along launch direction
+  const arcSpan = Math.PI * Math.min(0.5, 0.15 + height * 0.2);
+
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    // Smooth altitude rise (sine curve)
+    const alt = earthRadius + height * Math.sin(t * Math.PI * 0.5);
+    // Angular progress along orbit direction
+    const angle = t * arcSpan;
+
+    const orbitNormal = startDir.clone().cross(launchDir).normalize();
+    const dir = startDir.clone().applyAxisAngle(orbitNormal, angle).normalize();
+    points.push(dir.multiplyScalar(alt));
+  }
+
+  return points;
+}
+
+/**
+ * Single solid colored line rendered as a thin tube.
+ * No glow, fully opaque.
+ */
+function SolidArc({ points, color, radius }: {
+  points: THREE.Vector3[];
+  color: string;
+  radius: number;
+}) {
+  const meshData = useMemo(() => {
+    if (points.length < 2) return null;
+    const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5);
+    const geometry = new THREE.TubeGeometry(curve, points.length * 2, radius, 5, false);
+    const material = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(color),
+      transparent: false,
+    });
+    return { geometry, material };
+  }, [points, color, radius]);
+
+  useEffect(() => {
+    return () => {
+      meshData?.geometry.dispose();
+      meshData?.material.dispose();
+    };
+  }, [meshData]);
+
+  if (!meshData) return null;
+  return <mesh geometry={meshData.geometry} material={meshData.material} />;
 }
 
 interface TrajectoryArcsProps {
@@ -44,76 +124,34 @@ interface TrajectoryArcsProps {
   earthRadius: number;
 }
 
-function ArcLine({ curve, color }: { curve: THREE.QuadraticBezierCurve3; color: THREE.Color }) {
-  const ref = useRef<THREE.Group>(null);
-
-  const lineObj = useMemo(() => {
-    const points = curve.getPoints(32);
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.45,
-    });
-    return new THREE.Line(geometry, material);
-  }, [curve, color]);
+export function TrajectoryArcs({ missions, earthRadius }: TrajectoryArcsProps) {
+  const [trajectoryDb, setTrajectoryDb] = useState<TrajectoryDatabase | null>(null);
 
   useEffect(() => {
-    return () => {
-      lineObj.geometry.dispose();
-      (lineObj.material as THREE.LineBasicMaterial).dispose();
-    };
-  }, [lineObj]);
+    loadTrajectories().then(setTrajectoryDb);
+  }, []);
 
-  return (
-    <group ref={ref}>
-      <primitive object={lineObj} />
-    </group>
-  );
-}
-
-export function TrajectoryArcs({ missions, earthRadius }: TrajectoryArcsProps) {
-  const arcs = useMemo<ArcData[]>(() => {
-    const results: ArcData[] = [];
-
-    for (const mission of missions) {
+  const arcs = useMemo(() => {
+    return missions.map((mission) => {
       const { latitude, longitude } = mission.launchSite;
-      // Skip missions without valid coordinates
-      if (latitude === 0 && longitude === 0) continue;
+      if (latitude === 0 && longitude === 0) return null;
 
-      const startPos = latLngToVector3(latitude, longitude, earthRadius * 1.005);
-      const arcHeight = getArcHeight(mission.orbit);
-
-      // Control point: midpoint pushed outward from Earth center
-      const direction = startPos.clone().normalize();
-      // Offset the end point along a tangent direction to give the arc a flight path feel
-      const tangent = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
-      const controlPoint = direction
-        .clone()
-        .multiplyScalar(earthRadius + arcHeight)
-        .add(tangent.clone().multiplyScalar(arcHeight * 0.3));
-
-      // End point: further along orbit direction, at surface level
-      const endPos = startPos
-        .clone()
-        .normalize()
-        .add(tangent.clone().multiplyScalar(0.3))
-        .normalize()
-        .multiplyScalar(earthRadius * (1.0 + arcHeight * 0.5));
-
-      const curve = new THREE.QuadraticBezierCurve3(startPos, controlPoint, endPos);
       const color = getStatusColor(mission.status);
+      const isDeep = mission.isDeepSpace === true;
 
-      results.push({ id: mission.id, curve, color });
-    }
+      // For Earth-globe view: always show departure arc from launch site
+      const { height, inclination } = getOrbitParams(mission.orbit);
+      const points = generateArcPoints(latitude, longitude, earthRadius, height, inclination);
+      const radius = isDeep ? 0.005 : 0.003;
 
-    return results;
-  }, [missions, earthRadius]);
+      return { id: mission.id, points, color, radius };
+    }).filter(Boolean) as { id: string; points: THREE.Vector3[]; color: string; radius: number }[];
+  }, [missions, earthRadius, trajectoryDb]);
 
   return (
     <group>
       {arcs.map((arc) => (
-        <ArcLine key={arc.id} curve={arc.curve} color={arc.color} />
+        <SolidArc key={arc.id} points={arc.points} color={arc.color} radius={arc.radius} />
       ))}
     </group>
   );

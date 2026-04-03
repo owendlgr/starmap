@@ -5,19 +5,23 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { LaunchSite } from '@/lib/types';
 
+/**
+ * Convert geographic lat/lng to Three.js Vector3 on a sphere.
+ * Matches THREE.SphereGeometry default UV mapping with standard
+ * equirectangular Earth textures.
+ */
 function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector3 {
-  const phi = (lat * Math.PI) / 180;
-  const theta = (lng * Math.PI) / 180;
+  const phi = (90 - lat) * (Math.PI / 180);     // colatitude (0=north pole, PI=south pole)
+  const theta = (lng + 180) * (Math.PI / 180);   // longitude shifted to match texture seam at -180
   return new THREE.Vector3(
-    radius * Math.cos(phi) * Math.cos(theta),
-    radius * Math.sin(phi),
-    radius * Math.cos(phi) * Math.sin(theta)
+    -radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.cos(phi),
+    radius * Math.sin(phi) * Math.sin(theta)
   );
 }
 
 /**
  * Group nearby sites (within ~1 degree) to avoid overlapping markers.
- * Returns merged sites with combined launch counts and the most-used name.
  */
 function groupSitesByProximity(sites: LaunchSite[], thresholdDeg = 1.0): LaunchSite[] {
   const grouped: LaunchSite[] = [];
@@ -38,7 +42,6 @@ function groupSitesByProximity(sites: LaunchSite[], thresholdDeg = 1.0): LaunchS
       }
     }
 
-    // Pick the site with the highest launch count as the representative
     let best = cluster[0];
     let totalCount = 0;
     for (const s of cluster) {
@@ -47,10 +50,7 @@ function groupSitesByProximity(sites: LaunchSite[], thresholdDeg = 1.0): LaunchS
       if (c > (best.launchCount ?? 1)) best = s;
     }
 
-    grouped.push({
-      ...best,
-      launchCount: totalCount,
-    });
+    grouped.push({ ...best, launchCount: totalCount });
   }
 
   return grouped;
@@ -116,29 +116,20 @@ function SiteMarker({ site, position, brightness, scale, onSelect }: MarkerProps
 
       {/* Tooltip on hover */}
       {hovered && (
-        <Html
-          distanceFactor={3}
-          style={{
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <div
-            style={{
-              background: 'rgba(15, 15, 24, 0.92)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '4px',
-              padding: '4px 8px',
-              fontSize: '11px',
-              fontFamily: 'system-ui, sans-serif',
-              color: '#e4e4ec',
-              transform: 'translateY(-24px)',
-            }}
-          >
+        <Html distanceFactor={3} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+          <div style={{
+            background: 'rgba(15, 15, 24, 0.92)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: '4px', padding: '4px 8px',
+            fontSize: '11px', fontFamily: 'system-ui, sans-serif',
+            color: '#e4e4ec', transform: 'translateY(-24px)',
+          }}>
             <div style={{ fontWeight: 600, marginBottom: '2px' }}>{site.name}</div>
-            <div style={{ fontSize: '9px', color: '#8888a0', fontFamily: 'monospace' }}>
-              {site.country && <span>{site.country} &middot; </span>}
+            <div style={{ fontSize: '9px', color: '#b8b8cc', fontFamily: 'monospace' }}>
+              {site.country && <span>{site.country} · </span>}
               {site.launchCount ?? 0} launches
+              <br />
+              {site.latitude.toFixed(2)}°, {site.longitude.toFixed(2)}°
             </div>
           </div>
         </Html>
@@ -153,12 +144,7 @@ interface LaunchSiteMarkersProps {
   onSelectSite: (site: LaunchSite) => void;
 }
 
-export function LaunchSiteMarkers({
-  sites,
-  earthRadius,
-  onSelectSite,
-}: LaunchSiteMarkersProps) {
-  // Group nearby sites to prevent overlap
+export function LaunchSiteMarkers({ sites, earthRadius, onSelectSite }: LaunchSiteMarkersProps) {
   const grouped = useMemo(() => groupSitesByProximity(sites, 1.5), [sites]);
 
   const maxLaunches = useMemo(
@@ -171,7 +157,6 @@ export function LaunchSiteMarkers({
       grouped.map((site) => {
         const count = site.launchCount ?? 1;
         const brightness = Math.min(1, count / maxLaunches);
-        // Scale marker size: min 0.7x, max 1.8x based on launch count
         const scale = 0.7 + (count / maxLaunches) * 1.1;
         return {
           site,

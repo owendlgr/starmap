@@ -120,13 +120,43 @@ export interface TelemetryPoint {
   downrange: number;       // km
 }
 
+export interface MissionStage {
+  name: string;            // e.g. "Launch", "Trans-Lunar Injection", "Lunar Orbit"
+  date?: string;           // ISO date of this stage
+  description?: string;
+  status?: 'completed' | 'active' | 'upcoming' | 'failed';
+}
+
+export interface MissionWaypoint {
+  label: string;           // e.g. "Earth", "Mars Gravity Assist", "Jupiter Flyby"
+  date?: string;           // ISO date of flyby/arrival
+  lat?: number;            // latitude at body (if applicable)
+  lng?: number;            // longitude at body (if applicable)
+  distanceAU?: number;     // distance from Sun at this point
+  body?: string;           // celestial body name
+  description?: string;    // additional info about this waypoint
+}
+
+export interface CrewMember {
+  name: string;
+  role: string;            // e.g. "Commander", "Pilot", "Mission Specialist"
+  agency?: string;
+  nationality?: string;
+}
+
+export type MissionCategory = 'crewed' | 'robotic' | 'cargo' | 'satellite' | 'test' | 'planetary' | 'observatory' | 'other';
+export type MissionDestination = 'LEO' | 'GEO' | 'lunar' | 'mars' | 'venus' | 'jupiter' | 'saturn' | 'outer' | 'sun' | 'asteroid' | 'comet' | 'interstellar' | 'other';
+export type MissionStatus = 'success' | 'partial' | 'failed' | 'active' | 'upcoming' | 'in-transit' | 'ended';
+
 export interface Mission {
   id: string;
   name: string;
   agency: string;
   agencyCountry?: string;
   status: string;
+  statusCategory?: MissionStatus;
   date: string;            // ISO date
+  endDate?: string;        // ISO date (if mission has ended)
   launchSite: {
     name: string;
     latitude: number;
@@ -136,8 +166,21 @@ export interface Mission {
   orbit?: string;
   description?: string;
   imageUrl?: string;
+  patchUrl?: string;       // mission patch image
   missionType?: string;
+  category?: MissionCategory;
+  destination?: MissionDestination;
+  isDeepSpace?: boolean;   // true if beyond Earth orbit
+  isActive?: boolean;      // true if currently operational
+  crew?: CrewMember[];
+  stages?: MissionStage[];
+  waypoints?: MissionWaypoint[];
   telemetry?: TelemetryPoint[];
+  payload?: string;
+  massKg?: number;         // payload mass in kg
+  costUSD?: number;        // mission cost in USD
+  nasaUrl?: string;        // link to NASA mission page
+  wikiUrl?: string;        // link to Wikipedia
 }
 
 export interface LaunchSite {
@@ -149,7 +192,39 @@ export interface LaunchSite {
   launchCount?: number;
 }
 
+/* ── Mission filter state ────────────────────────────────── */
+
+export interface MissionFilters {
+  search: string;
+  agency: string;          // 'all' or agency name
+  category: MissionCategory | 'all';
+  destination: MissionDestination | 'all';
+  status: MissionStatus | 'all';
+  dateRange: [number, number] | null; // [startYear, endYear]
+}
+
 /* ── App types ────────────────────────────────────────────── */
 
-export type AppPage = 'stars' | 'earth' | 'planets' | 'galaxies';
+export type AppPage = 'missions' | 'planets' | 'stars' | 'galaxies' | 'streams';
 export type ThemeMode = 'light' | 'dark';
+
+/* ── Navigation ──────────────────────────────────────────── */
+
+export interface NavItem {
+  id: AppPage;
+  href: string;
+  label: string;
+  shortLabel: string;
+  icon: string;
+  description: string;
+}
+
+/* ── Search result (cross-section global search) ─────────── */
+
+export interface GlobalSearchResult {
+  id: string;
+  type: AppPage | 'moon' | 'asteroid' | 'exoplanet';
+  name: string;
+  subtitle: string;
+  href: string;
+}

@@ -335,7 +335,7 @@ export function FlatMap() {
           fontFamily: 'Georgia, serif',
         }}>
           <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{hoveredStar.name}</div>
-          <div style={{ fontSize: '0.65rem', fontFamily: "'Courier New', monospace", color: dark ? '#6a5e4e' : '#b0a48e', marginTop: '0.15rem' }}>
+          <div style={{ fontSize: '0.65rem', fontFamily: "'Courier New', monospace", color: dark ? '#9a8e80' : '#c0b4a0', marginTop: '0.15rem' }}>
             {hoveredStar.spectral} · mag {hoveredStar.mag.toFixed(1)} · {formatDistance(hoveredStar.dist_pc, scaleUnit)}
           </div>
         </div>
@@ -345,7 +345,7 @@ export function FlatMap() {
       <div style={{
         position: 'absolute', bottom: '1rem', left: '1rem',
         fontFamily: "'Courier New', monospace", fontSize: '0.6rem',
-        letterSpacing: '0.08em', color: dark ? '#9a8e7e' : '#6a5e4e',
+        letterSpacing: '0.08em', color: dark ? '#c4b8aa' : '#8a7e70',
       }}>
         {(1 / scale).toFixed(2)} pc/px · {(10 * 0.30660 * scale).toFixed(0)}px per 10 ly
       </div>
