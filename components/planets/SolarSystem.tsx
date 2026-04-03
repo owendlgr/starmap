@@ -50,24 +50,83 @@ function auToScene(pos: { x: number; y: number; z: number }): [number, number, n
 const planetLivePositions = new Map<string, THREE.Vector3>();
 
 /**
- * Known moon textures. Moon sphere uses these when zoomed in;
- * falls back to flat color gracefully if file is missing.
+ * Known moon textures. Falls back to MOON_COLORS gracefully if file is missing.
  */
 const MOON_TEXTURES: Record<string, string> = {
-  // Earth
-  moon:       'moon.jpg',
-  // Mars
-  phobos:     'phobos.jpg',
-  deimos:     'deimos.jpg',
-  // Jupiter — Galilean
-  io:         'io.jpg',
+  moon:       'moon_hires.jpg',  // Earth
+  phobos:     'phobos.jpg',      // Mars
+  deimos:     'deimos.jpg',      // Mars
+  io:         'io.jpg',          // Jupiter Galilean
   europa:     'europa.jpg',
   ganymede:   'ganymede.jpg',
   callisto:   'callisto.jpg',
-  // Saturn
-  titan:      'titan.jpg',
-  // Neptune
-  triton:     'triton.jpg',
+  titan:      'titan.jpg',       // Saturn
+  triton:     'triton.jpg',      // Neptune
+};
+
+/**
+ * Realistic fallback colors for moons without textures.
+ * Sources: NASA/USGS spectral data, Voyager/Cassini imagery.
+ */
+const MOON_COLORS: Record<string, string> = {
+  // Earth
+  moon: '#d4cfc8',
+  // Mars
+  phobos: '#8a7a6e', deimos: '#9a8a7e',
+  // Jupiter — inner
+  metis: '#9a7a68', adrastea: '#9a7a68',
+  amalthea: '#9a6a4e',  // reddish, coated in sulfur from Io
+  thebe: '#887460',
+  // Jupiter — Galilean (textured, but keep as fallback)
+  io: '#e8c860', europa: '#d0c8b8', ganymede: '#9a8a78', callisto: '#6a5e54',
+  // Jupiter — irregular (neutral grey-brown)
+  themisto: '#888898', leda: '#888898', himalia: '#989888',
+  lysithea: '#888898', elara: '#909090',
+  ananke: '#78788a', carme: '#78788a', pasiphae: '#78788a', sinope: '#78788a',
+  // Saturn — inner shepherds
+  pan: '#cac2b0', daphnis: '#c8c0ae', atlas: '#cac4b4',
+  prometheus: '#c4bcaa', pandora: '#c4bcaa',
+  epimetheus: '#c4bcaa', janus: '#c4bcaa',
+  // Saturn — mid-sized (Voyager/Cassini colors)
+  mimas: '#d2ceca',       // grey-white, large Herschel crater
+  enceladus: '#f0eeec',   // brightest body in solar system — nearly pure white ice
+  tethys: '#e2dedc',      // white-grey, Odysseus crater
+  telesto: '#deded8', calypso: '#deded8',
+  dione: '#d8d4d0',       // light grey-white, wispy terrain
+  helene: '#d8d4d0',
+  rhea: '#cec8c4',        // grey-white, Saturn's second largest moon
+  titan: '#c8a848',       // deep orange — dense nitrogen/haze atmosphere
+  hyperion: '#907858',    // dark, irregular, sponge-like
+  iapetus: '#706860',     // two-tone; show the dark leading hemisphere
+  // Saturn — outer irregular
+  kiviuq: '#888888', ijiraq: '#888888', paaliaq: '#888888',
+  albiorix: '#888888', tarvos: '#888888', siarnaq: '#888888',
+  phoebe: '#706860',      // dark captured carbonaceous object
+  ymir: '#888888',
+  // Uranus — inner ring shepherds
+  cordelia: '#9a9a9a', ophelia: '#9a9a9a', bianca: '#9a9a9a',
+  cressida: '#9a9a9a', desdemona: '#9a9a9a', juliet: '#9a9a9a',
+  portia: '#9a9a9a', rosalind: '#9a9a9a', cupid: '#9a9a9a',
+  belinda: '#9a9a9a', perdita: '#9a9a9a', mab: '#9a9a9a',
+  puck: '#7a7a88',        // larger, darker than inner shepherds
+  // Uranus — major moons (Voyager 2 imagery)
+  miranda: '#b8b4b0',     // varied terrain, patchwork geology
+  ariel: '#c4c0bc',       // bright icy surface, young valleys
+  umbriel: '#6e6e78',     // very dark, heavily cratered
+  titania: '#b0aca8',     // grey-brown, largest Uranian moon
+  oberon: '#8a8890',      // dark cratered, reddish tints
+  // Uranus — outer irregular
+  margaret: '#888898', francisco: '#888898', caliban: '#888898',
+  stephano: '#888898', trinculo: '#888898', sycorax: '#888898',
+  prospero: '#888898', setebos: '#888898', ferdinand: '#888898',
+  // Neptune — inner moons
+  naiad: '#8888a0', thalassa: '#8888a0', despina: '#8888a0',
+  galatea: '#8888a0', larissa: '#8888a0', hippocamp: '#8888a0',
+  proteus: '#8090a8',     // slightly blue-grey
+  triton: '#d0c4bc',      // pinkish-white — nitrogen frost + geysers
+  // Neptune — outer
+  nereid: '#8888a0', halimede: '#8888a0', sao: '#8888a0',
+  laomedeia: '#8888a0', psamathe: '#8888a0', neso: '#8888a0',
 };
 
 /**
@@ -324,13 +383,29 @@ function PlanetBody({ planet }: { planet: PlanetData }) {
 
 /* ── Moon system (shown when planet is selected) ─────────── */
 
+/**
+ * Stable per-moon phase offsets so moons start at random positions
+ * and don't all line up at angle=0 when a planet is selected.
+ * Uses a deterministic hash of the moon id for consistency across renders.
+ */
+function moonPhase(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  return ((h >>> 0) / 0xffffffff) * Math.PI * 2;
+}
+
 function MoonSystem({ planet }: { planet: PlanetData }) {
   const planetR = scaledRadius(planet.radius);
   const showLabels = usePlanetStore((s) => s.showLabels);
   const timeScale = usePlanetStore((s) => s.timeScale);
 
+  // Tilt the entire moon system to the planet's equatorial plane.
+  // This is most visible for Uranus (97.77°) — moons orbit in the
+  // "vertical" plane, perpendicular to the ecliptic.
+  const tiltRad = (planet.axialTilt * Math.PI) / 180;
+
   return (
-    <group>
+    <group rotation={[0, 0, tiltRad]}>
       {planet.moons.map((moon) => (
         <MoonBody
           key={moon.id}
@@ -339,35 +414,59 @@ function MoonSystem({ planet }: { planet: PlanetData }) {
           planetKmRadius={planet.radius}
           timeScale={timeScale}
           showLabels={showLabels}
+          phaseOffset={moonPhase(moon.id)}
         />
       ))}
     </group>
   );
 }
 
-function MoonBody({ moon, planetRadius, planetKmRadius, timeScale, showLabels }: {
+/**
+ * Cap the distance ratio for irregular moons so they don't push the
+ * camera absurdly far. Major moons (Galilean, Titan, Triton, etc.)
+ * sit comfortably within ratio 30; capping at 40 keeps irregulars
+ * visible but compressed near the edge of the moon system view.
+ */
+const MAX_ORBIT_RATIO = 40;
+
+function MoonBody({ moon, planetRadius, planetKmRadius, timeScale, showLabels, phaseOffset }: {
   moon: MoonData; planetRadius: number; planetKmRadius: number;
-  timeScale: number; showLabels: boolean;
+  timeScale: number; showLabels: boolean; phaseOffset: number;
 }) {
   const groupRef = useRef<THREE.Group>(null!);
 
-  // Real proportional orbit distance.
-  // orbitR preserves the ratio: moon_distance_km / planet_radius_km,
-  // mapped onto the planet's rendered scene radius.
-  // Example: Moon at 384,400 km, Earth radius 6,371 km → ratio 60.3 → ~2.73 scene units
-  const orbitR = planetRadius * (moon.distanceKm / planetKmRadius);
+  // Proportional orbit distance, capped so irregular moons stay in frame.
+  const rawRatio = moon.distanceKm / planetKmRadius;
+  const orbitR = planetRadius * Math.min(rawRatio, MAX_ORBIT_RATIO);
+  const isCompressed = rawRatio > MAX_ORBIT_RATIO;
 
-  // Moon size uses the same sqrt-scaled formula as planets for consistency.
-  const moonR = scaledRadius(moon.radius);
+  // Moon radius — use sqrt-scale like planets, but boost tiny moons for visibility.
+  const moonR = Math.max(0.004, scaledRadius(moon.radius) * (moon.radius < 50 ? 1.8 : 1));
 
-  // Orbit ring half-width scales with planet so it's visible on all planets
-  const ringW = Math.max(0.001, planetRadius * 0.012);
+  // Orbit ring width scales with planet size.
+  const ringW = Math.max(0.001, planetRadius * 0.009);
 
-  // Texture for known major moons
+  // Orbital inclination in radians (relative to equatorial plane, already in tilted frame).
+  const inclRad = ((moon.inclination ?? 0) * Math.PI) / 180;
+
+  // Texture for known major moons; otherwise use per-moon color.
   const moonTexture = usePlanetTexture(MOON_TEXTURES[moon.id]);
+  const moonColor = MOON_COLORS[moon.id] ?? '#c0c0cc';
+
+  // isMajor: named moons large enough to be clearly visible and labeled.
+  const isMajor = moon.radius > 200;
+  const showLabel = showLabels || isMajor;
+
+  useEffect(() => {
+    // Apply random starting phase so moons don't all line up at t=0.
+    if (groupRef.current) {
+      groupRef.current.rotation.y = phaseOffset;
+    }
+  }, [phaseOffset]);
 
   useFrame((_, delta) => {
-    if (groupRef.current && timeScale > 0) {
+    if (!groupRef.current) return;
+    if (timeScale > 0) {
       const period = Math.abs(moon.orbitalPeriod);
       const speed = period > 0 ? (2 * Math.PI) / (period * 2) : 0;
       const dir = moon.orbitalPeriod < 0 ? -1 : 1;
@@ -376,34 +475,50 @@ function MoonBody({ moon, planetRadius, planetKmRadius, timeScale, showLabels }:
   });
 
   return (
-    <group ref={groupRef}>
-      {/* Orbit ring */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[orbitR - ringW, orbitR + ringW, 64]} />
-        <meshBasicMaterial color="#6666aa" transparent opacity={0.22} side={THREE.DoubleSide} />
-      </mesh>
-      {/* Moon body */}
-      <group position={[orbitR, 0, 0]}>
-        <mesh>
-          <sphereGeometry args={[moonR, 16, 16]} />
-          {moonTexture ? (
-            <meshStandardMaterial map={moonTexture} />
-          ) : (
-            <meshBasicMaterial color="#c0c0cc" />
-          )}
+    // Inclination wrapper — tilts the entire orbit plane relative to equatorial plane.
+    <group rotation={[inclRad, 0, 0]}>
+      {/* Rotation around Y = orbital motion */}
+      <group ref={groupRef}>
+        {/* Orbit ring */}
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[orbitR - ringW, orbitR + ringW, 64]} />
+          <meshBasicMaterial
+            color={isCompressed ? '#886688' : '#6666aa'}
+            transparent
+            opacity={isCompressed ? 0.14 : (isMajor ? 0.3 : 0.18)}
+            side={THREE.DoubleSide}
+          />
         </mesh>
-        {(showLabels || moon.radius > 200) && (
-          <Html position={[0, moonR + Math.max(0.008, planetRadius * 0.15), 0]} center style={{ pointerEvents: 'none' }}>
-            <div style={{
-              fontFamily: 'var(--font-mono)', fontSize: '6px', fontWeight: 600,
-              color: moon.radius > 500 ? '#ccccee' : '#9999bb',
-              textShadow: '0 0 4px #000, 0 0 8px #000',
-              whiteSpace: 'nowrap',
-            }}>
-              {moon.name}
-            </div>
-          </Html>
-        )}
+
+        {/* Moon body */}
+        <group position={[orbitR, 0, 0]}>
+          <mesh>
+            <sphereGeometry args={[moonR, 16, 16]} />
+            {moonTexture ? (
+              <meshStandardMaterial map={moonTexture} roughness={0.85} />
+            ) : (
+              <meshStandardMaterial color={moonColor} roughness={0.88} metalness={0.02} />
+            )}
+          </mesh>
+
+          {showLabel && (
+            <Html
+              position={[0, moonR + Math.max(0.006, planetRadius * 0.12), 0]}
+              center
+              style={{ pointerEvents: 'none' }}
+            >
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: '6px', fontWeight: 600,
+                color: isMajor ? '#ccccee' : '#9999bb',
+                textShadow: '0 0 4px #000, 0 0 8px #000',
+                whiteSpace: 'nowrap',
+                opacity: isCompressed ? 0.6 : 1,
+              }}>
+                {moon.name}{isCompressed ? ' ·' : ''}
+              </div>
+            </Html>
+          )}
+        </group>
       </group>
     </group>
   );
@@ -444,12 +559,15 @@ function CameraController() {
     // (i.e. within ~10 Hill radii — inner system only).
     let moonExtent = r * 8; // minimum standoff = 8× planet radius
     if (planet.moons.length > 0) {
-      // Only consider moons within ~2,000 planetary radii to avoid wild standoff
-      // from distant irregulars (Himalia, Phoebe, etc).
-      const CUTOFF = planet.radius * 2000;
+      // Only consider inner/regular moons (within ~70 planetary radii) for
+      // camera positioning. This keeps the view on Galilean/Titan/Triton scale
+      // rather than flying 8+ AU out to include irregulars like Himalia/Phoebe.
+      const CUTOFF = planet.radius * 70; // km
       for (const m of planet.moons) {
         if (m.distanceKm <= CUTOFF) {
-          const mOrbit = r * (m.distanceKm / planet.radius);
+          // Mirror the MAX_ORBIT_RATIO cap from MoonBody rendering.
+          const rawRatio = m.distanceKm / planet.radius;
+          const mOrbit = r * Math.min(rawRatio, MAX_ORBIT_RATIO);
           if (mOrbit > moonExtent) moonExtent = mOrbit;
         }
       }
