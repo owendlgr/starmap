@@ -422,12 +422,19 @@ function MoonSystem({ planet }: { planet: PlanetData }) {
 }
 
 /**
- * Cap the distance ratio for irregular moons so they don't push the
- * camera absurdly far. Major moons (Galilean, Titan, Triton, etc.)
- * sit comfortably within ratio 30; capping at 40 keeps irregulars
- * visible but compressed near the edge of the moon system view.
+ * Logarithmic orbit scaling for moons.
+ * Maps distanceKm → scene units so that:
+ *   - Inner moons are well-spaced and visible
+ *   - Irregulars at 100–700× planet radii are compressed naturally
+ *   - No hard cutoff — all moons are always rendered
+ *
+ * Formula: orbitR = planetR × LOG_K × log₂(1 + distanceKm / planetKmRadius)
  */
-const MAX_ORBIT_RATIO = 40;
+const LOG_K = 3;
+
+function logOrbitRadius(distanceKm: number, planetRadius: number, planetKmRadius: number): number {
+  return planetRadius * LOG_K * Math.log2(1 + distanceKm / planetKmRadius);
+}
 
 function MoonBody({ moon, planetRadius, planetKmRadius, timeScale, showLabels, phaseOffset }: {
   moon: MoonData; planetRadius: number; planetKmRadius: number;
@@ -435,13 +442,11 @@ function MoonBody({ moon, planetRadius, planetKmRadius, timeScale, showLabels, p
 }) {
   const groupRef = useRef<THREE.Group>(null!);
 
-  // Proportional orbit distance, capped so irregular moons stay in frame.
-  const rawRatio = moon.distanceKm / planetKmRadius;
-  const orbitR = planetRadius * Math.min(rawRatio, MAX_ORBIT_RATIO);
-  const isCompressed = rawRatio > MAX_ORBIT_RATIO;
+  // Logarithmic orbit distance — compresses far irregulars naturally.
+  const orbitR = logOrbitRadius(moon.distanceKm, planetRadius, planetKmRadius);
 
-  // Moon radius — use sqrt-scale like planets, but boost tiny moons for visibility.
-  const moonR = Math.max(0.004, scaledRadius(moon.radius) * (moon.radius < 50 ? 1.8 : 1));
+  // Moon radius — tiny dots: ~3× smaller than before.
+  const moonR = Math.max(0.0015, scaledRadius(moon.radius) * 0.33);
 
   // Orbit ring width scales with planet size.
   const ringW = Math.max(0.001, planetRadius * 0.009);
@@ -483,9 +488,9 @@ function MoonBody({ moon, planetRadius, planetKmRadius, timeScale, showLabels, p
         <mesh rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[orbitR - ringW, orbitR + ringW, 64]} />
           <meshBasicMaterial
-            color={isCompressed ? '#886688' : '#6666aa'}
+            color="#6666aa"
             transparent
-            opacity={isCompressed ? 0.14 : (isMajor ? 0.3 : 0.18)}
+            opacity={isMajor ? 0.3 : 0.18}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -512,9 +517,8 @@ function MoonBody({ moon, planetRadius, planetKmRadius, timeScale, showLabels, p
                 color: isMajor ? '#ccccee' : '#9999bb',
                 textShadow: '0 0 4px #000, 0 0 8px #000',
                 whiteSpace: 'nowrap',
-                opacity: isCompressed ? 0.6 : 1,
               }}>
-                {moon.name}{isCompressed ? ' ·' : ''}
+                {moon.name}
               </div>
             </Html>
           )}
@@ -553,21 +557,15 @@ function CameraController() {
     }
 
     const r = scaledRadius(planet.radius);
-    // Compute the outermost inner/mid moon orbit in scene units so the camera
-    // parks at a sensible distance (Galilean zone, not Himalia).
-    // We use the outermost moon whose distanceKm < 5 × planet radius × 100
-    // (i.e. within ~10 Hill radii — inner system only).
-    let moonExtent = r * 8; // minimum standoff = 8× planet radius
+    // Compute the outermost regular moon orbit in scene units using the same
+    // logarithmic scaling as MoonBody so the camera frames them correctly.
+    // Only consider regular moons (within ~70 planetary radii) for positioning.
+    let moonExtent = r * 8; // minimum standoff
     if (planet.moons.length > 0) {
-      // Only consider inner/regular moons (within ~70 planetary radii) for
-      // camera positioning. This keeps the view on Galilean/Titan/Triton scale
-      // rather than flying 8+ AU out to include irregulars like Himalia/Phoebe.
-      const CUTOFF = planet.radius * 70; // km
+      const CUTOFF = planet.radius * 70; // km — inner/regular moons only
       for (const m of planet.moons) {
         if (m.distanceKm <= CUTOFF) {
-          // Mirror the MAX_ORBIT_RATIO cap from MoonBody rendering.
-          const rawRatio = m.distanceKm / planet.radius;
-          const mOrbit = r * Math.min(rawRatio, MAX_ORBIT_RATIO);
+          const mOrbit = logOrbitRadius(m.distanceKm, r, planet.radius);
           if (mOrbit > moonExtent) moonExtent = mOrbit;
         }
       }
