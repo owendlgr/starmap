@@ -43,13 +43,13 @@ export function ConstellationLines({ stars }: Props) {
   }, [stars, flattenAmount]);
 
   const material = useMemo(() => new THREE.LineBasicMaterial({
-    color: theme === 'dark' ? '#e0c878' : '#3a2e1e',
+    color: theme === 'dark' ? '#44ff88' : '#1a8a4a',
     transparent: true,
     opacity: 1.0,
   }), [theme]);
 
   useEffect(() => {
-    material.color.set(theme === 'dark' ? '#e0c878' : '#3a2e1e');
+    material.color.set(theme === 'dark' ? '#44ff88' : '#1a8a4a');
     material.opacity = 1.0;
   }, [theme, material]);
 

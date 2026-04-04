@@ -157,51 +157,20 @@ function StarLayerPanel() {
           <span className="layer-checkbox" />
           <span>CENTER</span>
         </button>
+        <button className="layer-toggle" onClick={() => setZoomTarget(useStore.getState().zoomTarget * 0.7)} title="Zoom in">
+          <span className="layer-checkbox" />
+          <span>ZOOM IN (+)</span>
+        </button>
+        <button className="layer-toggle" onClick={() => setZoomTarget(useStore.getState().zoomTarget * 1.4)} title="Zoom out">
+          <span className="layer-checkbox" />
+          <span>ZOOM OUT (-)</span>
+        </button>
       </div>
     </div>
   );
 }
 
-function MapControls() {
-  const { zoomTarget, setZoomTarget, triggerCameraReset } = useStore();
-  return (
-    <div className="map-controls" style={{
-      position: 'absolute',
-      top: '50%',
-      right: '12px',
-      transform: 'translateY(-50%)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '4px',
-      zIndex: 10,
-    }}>
-      <button
-        className="map-control-btn"
-        onClick={() => setZoomTarget(zoomTarget * 0.7)}
-        title="Zoom in"
-        style={{ width: 32, height: 32 }}
-      >
-        +
-      </button>
-      <button
-        className="map-control-btn"
-        onClick={() => setZoomTarget(zoomTarget * 1.4)}
-        title="Zoom out"
-        style={{ width: 32, height: 32 }}
-      >
-        −
-      </button>
-      <button
-        className="map-control-btn"
-        onClick={triggerCameraReset}
-        title="Re-center on Sol"
-        style={{ width: 32, height: 32 }}
-      >
-        ⌂
-      </button>
-    </div>
-  );
-}
+// MapControls removed — zoom/center now in StarLayerPanel
 
 export default function StarsPage() {
   const theme = useAppStore((s) => s.theme);
@@ -239,9 +208,6 @@ export default function StarsPage() {
         <StarSearch />
         <StarSidePanel />
 
-        {/* Map controls — right side (+, -, home) */}
-        <MapControls />
-
         {/* Spectral type legend */}
         <div className="legend-bar">
           {[
@@ -263,7 +229,7 @@ export default function StarsPage() {
         {/* Help hint */}
         <div style={{
           position: 'absolute', bottom: '2.5rem', left: '50%', transform: 'translateX(-50%)',
-          fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 600,
+          fontFamily: 'var(--font-mono)', fontSize: '0.8rem', fontWeight: 600,
           letterSpacing: '0.08em', color: 'var(--text-muted)', opacity: 0.6,
           pointerEvents: 'none', whiteSpace: 'nowrap',
         }}>

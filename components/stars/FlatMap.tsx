@@ -78,14 +78,14 @@ export function FlatMap() {
     const h = rect?.height || canvas.height;
 
     // Clear
-    ctx.fillStyle = dark ? '#0a0806' : '#f0ece0';
+    ctx.fillStyle = dark ? '#050508' : '#eef0ee';
     ctx.fillRect(0, 0, w, h);
 
     const cx = w / 2;
     const cy = h / 2;
 
     // ── Grid ──
-    const gridColor = dark ? 'rgba(80, 70, 56, 0.3)' : 'rgba(160, 148, 130, 0.3)';
+    const gridColor = dark ? 'rgba(40, 80, 60, 0.3)' : 'rgba(100, 160, 130, 0.3)';
     const CELL_PC = 10 * 0.30660; // 10 ly
     const cellPx = CELL_PC * scale;
 
@@ -118,7 +118,7 @@ export function FlatMap() {
       { ly: 500, label: '500 ly' },
     ];
     ctx.setLineDash([4, 3]);
-    ctx.strokeStyle = dark ? 'rgba(160, 140, 100, 0.4)' : 'rgba(100, 88, 60, 0.35)';
+    ctx.strokeStyle = dark ? 'rgba(68, 200, 120, 0.3)' : 'rgba(30, 120, 70, 0.3)';
     ctx.lineWidth = 1;
     for (const ring of rings) {
       const rPx = ring.ly * 0.30660 * scale;
@@ -127,15 +127,15 @@ export function FlatMap() {
       ctx.arc(cx + offset.x, cy + offset.y, rPx, 0, Math.PI * 2);
       ctx.stroke();
       // Label
-      ctx.font = `bold 9px 'Courier New', monospace`;
-      ctx.fillStyle = dark ? 'rgba(160, 140, 100, 0.7)' : 'rgba(80, 68, 40, 0.7)';
+      ctx.font = `bold 14px "SF Mono", Monaco, monospace`;
+      ctx.fillStyle = dark ? 'rgba(68, 200, 120, 0.6)' : 'rgba(30, 100, 60, 0.6)';
       ctx.fillText(ring.label, cx + offset.x + rPx + 4, cy + offset.y - 3);
     }
     ctx.setLineDash([]);
 
     // ── Constellation lines ──
     if (showConstellations) {
-      ctx.strokeStyle = dark ? 'rgba(212, 188, 122, 0.5)' : 'rgba(74, 62, 46, 0.4)';
+      ctx.strokeStyle = dark ? 'rgba(68, 255, 136, 0.35)' : 'rgba(26, 138, 74, 0.35)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       const allPairs = buildConstellationPairs(stars);
@@ -153,7 +153,7 @@ export function FlatMap() {
 
     // ── Stars ──
     const starColor = dark ? 'rgba(220, 210, 185, 0.9)' : 'rgba(26, 18, 8, 0.85)';
-    const selectedColor = '#c8a96a';
+    const selectedColor = '#44ff88';
     const visibleStars: { sx: number; sy: number; star: Star }[] = [];
 
     // Filter stars by layers and magnitude
@@ -185,7 +185,7 @@ export function FlatMap() {
     if (selectedStar && measureTarget) {
       const { sx: sx1, sy: sy1 } = toScreen(selectedStar.x, selectedStar.z, canvas);
       const { sx: sx2, sy: sy2 } = toScreen(measureTarget.x, measureTarget.z, canvas);
-      ctx.strokeStyle = '#c8a96a';
+      ctx.strokeStyle = '#44ff88';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
       ctx.beginPath();
@@ -205,16 +205,16 @@ export function FlatMap() {
     const { sx: solX, sy: solY } = toScreen(0, 0, canvas);
     ctx.beginPath();
     ctx.arc(solX, solY, 5, 0, Math.PI * 2);
-    ctx.fillStyle = dark ? '#e8d8a8' : '#2a1e0e';
+    ctx.fillStyle = dark ? '#44ff88' : '#1a8a4a';
     ctx.fill();
-    ctx.font = 'bold 11px Georgia, serif';
-    ctx.fillStyle = dark ? '#e8e0d0' : '#1a1208';
+    ctx.font = `bold 14px "SF Mono", Monaco, monospace`;
+    ctx.fillStyle = dark ? '#ccccee' : '#1a2e1a';
     ctx.fillText('Sol', solX + 8, solY + 4);
 
     // ── Labels ──
     if (showLabels) {
-      ctx.font = 'bold 11px Georgia, serif';
-      ctx.fillStyle = dark ? 'rgba(232, 224, 208, 0.85)' : 'rgba(26, 18, 8, 0.8)';
+      ctx.font = `bold 14px "SF Mono", Monaco, monospace`;
+      ctx.fillStyle = dark ? 'rgba(204, 204, 238, 0.85)' : 'rgba(26, 46, 26, 0.8)';
       for (const { sx, sy, star } of visibleStars) {
         if (!star.name) continue;
         ctx.fillText(star.name, sx + 7, sy - 5);
@@ -328,11 +328,11 @@ export function FlatMap() {
         <div style={{
           position: 'fixed', left: hoverPos.x + 16, top: hoverPos.y - 10, zIndex: 30,
           background: dark ? 'rgba(240,236,224,0.95)' : 'rgba(20,16,10,0.95)',
-          color: dark ? '#1a1208' : '#f0e8d8',
+          color: dark ? '#1a2e1a' : '#f0e8d8',
           padding: '0.4rem 0.7rem',
-          border: `1px solid ${dark ? 'rgba(26,18,8,0.15)' : 'rgba(200,180,140,0.25)'}`,
+          border: `1px solid ${dark ? 'rgba(62,62,62,0.5)' : 'rgba(100,160,130,0.25)'}`,
           pointerEvents: 'none',
-          fontFamily: 'Georgia, serif',
+          fontFamily: '"SF Mono", Monaco, monospace',
         }}>
           <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{hoveredStar.name}</div>
           <div style={{ fontSize: '0.65rem', fontFamily: "'Courier New', monospace", color: dark ? '#9a8e80' : '#c0b4a0', marginTop: '0.15rem' }}>

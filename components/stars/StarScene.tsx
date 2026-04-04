@@ -317,9 +317,9 @@ function CameraManager() {
 function StarLabels({ stars }: { stars: Star[] }) {
   const { showLabels, scaleUnit, theme, zoomTarget, flattenAmount } = useStore();
   const dark = theme === 'dark';
-  const txt  = dark ? '#e8e0d0' : '#1a1208';
-  const sub  = dark ? '#c4b8aa' : '#7a6e60';
-  const shad = dark ? '#0a0806' : '#f0ece0';
+  const txt  = dark ? '#ccccee' : '#1a1a2e';
+  const sub  = dark ? '#88aa99' : '#5a6a60';
+  const shad = dark ? '#050508' : '#eef0ee';
 
   // Show all star labels, cap at 500 for performance
   const visible = useMemo(() => {
@@ -332,11 +332,11 @@ function StarLabels({ stars }: { stars: Star[] }) {
       {visible.map(s => (
         <Html key={s.id} distanceFactor={10} position={[s.x+0.15, s.y * (1 - flattenAmount)+0.15, s.z]}
           style={{ zIndex:5, pointerEvents:'none' }} zIndexRange={[10,0]}>
-          <div style={{ fontFamily:'Georgia,serif', fontWeight:'bold', color:txt,
+          <div style={{ fontFamily:'"SF Mono",Monaco,"Cascadia Code",monospace', fontWeight:600, color:txt,
             whiteSpace:'nowrap', lineHeight:1.3, pointerEvents:'none',
             textShadow:`0 0 6px ${shad}, 0 0 6px ${shad}, 0 0 8px ${shad}` }}>
-            <span style={{ display:'block', fontSize:'9px' }}>{s.name}</span>
-            <span style={{ display:'block', fontSize:'8px', color:sub }}>
+            <span style={{ display:'block', fontSize:'14px', letterSpacing:'0.5px', textTransform:'uppercase' }}>{s.name}</span>
+            <span style={{ display:'block', fontSize:'13px', color:sub }}>
               {s.dist_pc>0 ? formatDistance(s.dist_pc, scaleUnit) : 'here'}
             </span>
           </div>
@@ -425,7 +425,7 @@ function TwoDDotsCanvas({
     const gMinX = Math.max(minX, lo), gMaxX = Math.min(maxX, hi);
     const gMinZ = Math.max(minZ, lo), gMaxZ = Math.min(maxZ, hi);
 
-    ctx.strokeStyle = dark ? 'rgba(80, 70, 56, 0.35)' : 'rgba(160, 152, 136, 0.35)';
+    ctx.strokeStyle = dark ? 'rgba(40, 80, 60, 0.35)' : 'rgba(100, 160, 130, 0.35)';
     ctx.lineWidth = 0.5;
     // Lines parallel to Z axis (varying X)
     for (let i = gMinX; i <= gMaxX; i++) {
@@ -448,7 +448,7 @@ function TwoDDotsCanvas({
       { ly: 50, label: '50 ly' },
       { ly: 100, label: '100 ly' },
     ];
-    ctx.strokeStyle = dark ? 'rgba(160, 140, 100, 0.45)' : 'rgba(100, 88, 60, 0.4)';
+    ctx.strokeStyle = dark ? 'rgba(68, 200, 120, 0.35)' : 'rgba(30, 120, 70, 0.35)';
     ctx.lineWidth = 1;
     ctx.setLineDash([6, 4]);
     for (const ring of ringDistances) {
@@ -466,15 +466,15 @@ function TwoDDotsCanvas({
       ctx.stroke();
       // Label at the right side of the ring
       const [lx, ly2] = project2D(rPc, 0);
-      ctx.font = 'bold 10px Georgia, serif';
-      ctx.fillStyle = dark ? 'rgba(180, 160, 120, 0.8)' : 'rgba(80, 68, 40, 0.8)';
+      ctx.font = 'bold 14px "SF Mono", Monaco, monospace';
+      ctx.fillStyle = dark ? 'rgba(68, 200, 120, 0.7)' : 'rgba(30, 100, 60, 0.7)';
       ctx.fillText(ring.label, lx + 4, ly2 - 4);
     }
     ctx.setLineDash([]);
 
     // Draw constellation lines first (behind stars)
     if (showConstellations) {
-      ctx.strokeStyle = dark ? 'rgba(212, 188, 122, 0.6)' : 'rgba(74, 62, 46, 0.5)';
+      ctx.strokeStyle = dark ? 'rgba(68, 255, 136, 0.4)' : 'rgba(26, 138, 74, 0.4)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       for (const [h1, h2] of CONSTELLATION_PAIRS) {
@@ -514,10 +514,10 @@ function TwoDDotsCanvas({
     // Sol marker
     const [solX, solY] = project2D(0, 0);
     ctx.beginPath(); ctx.arc(solX, solY, 6, 0, Math.PI * 2);
-    ctx.fillStyle = dark ? '#e8d8a8' : '#2a1e0e'; ctx.fill();
+    ctx.fillStyle = dark ? '#44ff88' : '#1a8a4a'; ctx.fill();
     // Sol label
-    ctx.font = 'bold 10px Georgia, serif';
-    ctx.fillStyle = dark ? '#e8e0d0' : '#1a1208';
+    ctx.font = 'bold 14px "SF Mono", Monaco, monospace';
+    ctx.fillStyle = dark ? '#e8e0d0' : '#1a2e1a';
     ctx.fillText('Sol', solX + 9, solY + 4);
 
     projRef.current = entries;
@@ -589,7 +589,7 @@ function HoverTooltip() {
 function Scene() {
   const { stars, selectedStar, measureTarget, setSelected, theme, flattenAmount } = useStore();
   const dark = theme === 'dark';
-  const bg = dark ? '#0a0806' : '#f0ece0';
+  const bg = dark ? '#050508' : '#eef0ee';
   return (
     <>
       <color attach="background" args={[bg]} />
@@ -602,7 +602,7 @@ function Scene() {
       <ConstellationLines stars={stars} />
       <StarLabels stars={stars} />
       <HoverTooltip />
-      {selectedStar && <SelectionMarker star={selectedStar} color="#c8a96a" flattenAmount={flattenAmount} />}
+      {selectedStar && <SelectionMarker star={selectedStar} color="#44ff88" flattenAmount={flattenAmount} />}
       {measureTarget && <SelectionMarker star={measureTarget} color="#6ab4c8" flattenAmount={flattenAmount} />}
       {selectedStar && measureTarget && <MeasureLine from={selectedStar} to={measureTarget} flattenAmount={flattenAmount} />}
       {dark && <DeferredBloom />}
@@ -617,7 +617,7 @@ function Scene2D({
   projRef: React.MutableRefObject<ProjEntry[]>;
 }) {
   const { stars, theme } = useStore();
-  const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
+  const bg = theme === 'dark' ? '#050508' : '#eef0ee';
   return (
     <>
       <color attach="background" args={[bg]} />
@@ -632,7 +632,7 @@ function Scene2D({
 // ── Root export ───────────────────────────────────────────
 export function StarMap() {
   const { theme, mapMode, setSelected, mode, setMeasureTarget, setZoomTarget, triggerCameraReset, hoveredStar } = useStore();
-  const bg = theme === 'dark' ? '#0a0806' : '#f0ece0';
+  const bg = theme === 'dark' ? '#050508' : '#eef0ee';
 
   // Loading state
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -721,7 +721,7 @@ export function StarMap() {
   const panelBg  = dark ? 'rgba(240,236,224,0.95)' : 'rgba(20,16,10,0.95)';
   const border   = dark ? 'rgba(26,18,8,0.2)'      : 'rgba(200,180,140,0.3)';
   const hdrColor = dark ? '#5a4e3e'                : '#b0a48e';
-  const namColor = dark ? '#1a1208'                : '#f0e8d8';
+  const namColor = dark ? '#1a2e1a'                : '#f0e8d8';
   const metColor = dark ? '#5a4e3e'                : '#b0a48e';
   const rowBdr   = dark ? 'rgba(26,18,8,0.1)'     : 'rgba(200,180,140,0.12)';
   const rowHov   = dark ? 'rgba(26,18,8,0.08)'    : 'rgba(200,180,140,0.1)';
@@ -740,7 +740,7 @@ export function StarMap() {
         <div style={{
           position: 'absolute', inset: 0, zIndex: 100,
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          background: theme === 'dark' ? '#0a0806' : '#f0ece0',
+          background: theme === 'dark' ? '#050508' : '#eef0ee',
           opacity: dataLoaded ? 0 : 1,
           transition: 'opacity 0.5s ease',
           pointerEvents: dataLoaded ? 'none' : 'auto',
