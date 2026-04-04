@@ -25,15 +25,14 @@ export function scaledDistance(distanceAU: number): number {
 }
 
 /**
- * Planet radius in scene units.
- * Real scale: Earth = 0.000426 units (invisible at system view).
- * We exaggerate just enough to see dots — Jupiter ~0.15, Earth ~0.04.
- * At system scale these are tiny specs. You zoom in to see detail.
+ * Planet/moon radius in scene units — LINEAR proportional.
+ * Preserves accurate real size ratios between all bodies.
+ * Jupiter (69911 km) = 0.15 is the reference; everything else
+ * scales proportionally: Saturn 0.125, Earth 0.014, Mercury 0.005.
+ * Gas giants are genuinely ~11× bigger than Earth — as in reality.
  */
 export function scaledRadius(radiusKm: number): number {
-  // Use sqrt scaling so gas giants aren't absurdly larger than terrestrials
-  // Jupiter (69911 km) → ~0.15, Earth (6371 km) → ~0.04, Mercury (2440 km) → ~0.03
-  return Math.max(0.02, Math.sqrt(radiusKm / 69911) * 0.15);
+  return (radiusKm / 69911) * 0.15;
 }
 
 /** Convert orbital position (AU) to scene coordinates */
@@ -445,8 +444,9 @@ function MoonBody({ moon, planetRadius, planetKmRadius, timeScale, showLabels, p
   // Logarithmic orbit distance — compresses far irregulars naturally.
   const orbitR = logOrbitRadius(moon.distanceKm, planetRadius, planetKmRadius);
 
-  // Moon radius — tiny dots: ~3× smaller than before.
-  const moonR = Math.max(0.0015, scaledRadius(moon.radius) * 0.33);
+  // Moon radius — same linear scale as planets for accurate proportions.
+  // Minimum 0.001 ensures even tiny irregular moons are visible as dots.
+  const moonR = Math.max(0.001, scaledRadius(moon.radius));
 
   // Orbit ring width scales with planet size.
   const ringW = Math.max(0.001, planetRadius * 0.009);
