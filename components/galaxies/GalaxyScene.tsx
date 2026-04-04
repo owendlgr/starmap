@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useMemo, useCallback, useState } from 'react';
-import { Canvas, useFrame, useThree, ThreeEvent } from '@react-three/fiber';
+import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
+import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Stars, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGalaxyStore } from '@/lib/stores/galaxyStore';
@@ -9,11 +9,114 @@ import { galaxyTypeColor } from '@/lib/data/galaxyCatalog';
 import { MilkyWayOutline } from './MilkyWayOutline';
 import type { GalaxyData } from '@/lib/types';
 
-/* ── Distance threshold for Local Group vs Local Volume ──── */
+/* ── Procedural gradient textures per morphology ─────────── */
+
+const TEX_SIZE = 128;
+
+/** Create a soft radial gradient on a canvas — the core of every galaxy sprite. */
+function makeGradientCanvas(
+  shape: 'circle' | 'ellipse' | 'spiral' | 'irregular',
+): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = TEX_SIZE;
+  c.height = TEX_SIZE;
+  const ctx = c.getContext('2d')!;
+  const cx = TEX_SIZE / 2;
+  const cy = TEX_SIZE / 2;
+  const r = TEX_SIZE / 2;
+
+  if (shape === 'spiral') {
+    // Core glow + faint spiral hint
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.08, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(0.2, 'rgba(255,255,255,0.5)');
+    grad.addColorStop(0.45, 'rgba(255,255,255,0.15)');
+    grad.addColorStop(0.7, 'rgba(255,255,255,0.04)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
+    // Add two faint spiral arm arcs
+    ctx.globalAlpha = 0.12;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 6;
+    for (let arm = 0; arm < 2; arm++) {
+      ctx.beginPath();
+      const startAngle = arm * Math.PI;
+      for (let t = 0; t < 120; t++) {
+        const angle = startAngle + t * 0.06;
+        const dist = 8 + t * 0.38;
+        const x = cx + Math.cos(angle) * dist;
+        const y = cy + Math.sin(angle) * dist;
+        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  } else if (shape === 'ellipse') {
+    // Smooth elliptical falloff
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.1, 'rgba(255,255,255,0.8)');
+    grad.addColorStop(0.3, 'rgba(255,255,255,0.35)');
+    grad.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
+  } else if (shape === 'irregular') {
+    // Asymmetric blob using offset gradients
+    const grad1 = ctx.createRadialGradient(cx - 8, cy + 5, 0, cx, cy, r * 0.8);
+    grad1.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grad1.addColorStop(0.25, 'rgba(255,255,255,0.4)');
+    grad1.addColorStop(0.6, 'rgba(255,255,255,0.08)');
+    grad1.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad1;
+    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
+    const grad2 = ctx.createRadialGradient(cx + 12, cy - 8, 0, cx + 12, cy - 8, r * 0.5);
+    grad2.addColorStop(0, 'rgba(255,255,255,0.5)');
+    grad2.addColorStop(0.4, 'rgba(255,255,255,0.15)');
+    grad2.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad2;
+    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
+  } else {
+    // Circle — default soft dot
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.12, 'rgba(255,255,255,0.7)');
+    grad.addColorStop(0.35, 'rgba(255,255,255,0.25)');
+    grad.addColorStop(0.65, 'rgba(255,255,255,0.05)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
+  }
+  return c;
+}
+
+/** Cached textures — one per shape, shared across all galaxies. */
+const textureCache = new Map<string, THREE.CanvasTexture>();
+
+function getGalaxyTexture(shape: 'circle' | 'ellipse' | 'spiral' | 'irregular'): THREE.CanvasTexture {
+  if (textureCache.has(shape)) return textureCache.get(shape)!;
+  const canvas = makeGradientCanvas(shape);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  textureCache.set(shape, tex);
+  return tex;
+}
+
+function getShapeForType(galaxy: GalaxyData): 'circle' | 'ellipse' | 'spiral' | 'irregular' {
+  const gtype = (galaxy.galaxyType ?? galaxy.type ?? '').toLowerCase();
+  if (gtype.includes('spiral')) return 'spiral';
+  if (gtype.includes('elliptical') || gtype.includes('lenticular')) return 'ellipse';
+  if (gtype.includes('irregular')) return 'irregular';
+  return 'circle'; // dwarf, unknown
+}
+
+/* ── Distance threshold for Local Group ─────────────────── */
 
 const LOCAL_GROUP_MPC = 1.5;
 
-/* ── Well-known galaxy names that always show labels ─────── */
+/* ── Well-known galaxy names that always show labels ────── */
 
 const WELL_KNOWN_NAMES = [
   'andromeda', 'triangulum', 'sombrero', 'whirlpool', 'pinwheel',
@@ -30,38 +133,21 @@ function isWellKnown(name: string): boolean {
   return WELL_KNOWN_NAMES.some((wk) => lower.includes(wk));
 }
 
-/* ── Magnitude threshold for default label visibility ────── */
-
 const LABEL_MAG_THRESHOLD = 8;
 
-/* ── Scale ratios per galaxy type ────────────────────────── */
+/* ── Sprite scale per morphology ────────────────────────── */
 
-function getGalaxySpriteScale(
-  galaxy: GalaxyData,
-  baseSize: number,
-): [number, number, number] {
-  const gtype = galaxy.galaxyType ?? galaxy.type.toLowerCase();
-
-  if (gtype.includes('spiral')) {
-    return [baseSize * 1.5, baseSize, 1];
-  }
-  if (gtype.includes('elliptical')) {
-    return [baseSize, baseSize, 1];
-  }
-  if (gtype.includes('irregular')) {
-    return [baseSize * 1.2, baseSize * 0.9, 1];
-  }
-  if (gtype.includes('dwarf')) {
-    return [baseSize * 0.5, baseSize * 0.5, 1];
-  }
-  if (gtype.includes('lenticular')) {
-    return [baseSize * 1.3, baseSize * 0.7, 1];
-  }
-  // unknown — roughly circular
-  return [baseSize, baseSize, 1];
+function spriteScale(galaxy: GalaxyData, base: number): [number, number, number] {
+  const gtype = (galaxy.galaxyType ?? galaxy.type ?? '').toLowerCase();
+  if (gtype.includes('spiral')) return [base * 1.4, base, 1];
+  if (gtype.includes('elliptical')) return [base, base, 1];
+  if (gtype.includes('lenticular')) return [base * 1.3, base * 0.6, 1];
+  if (gtype.includes('irregular')) return [base * 1.1, base * 0.85, 1];
+  if (gtype.includes('dwarf')) return [base * 0.6, base * 0.6, 1];
+  return [base * 0.8, base * 0.8, 1];
 }
 
-/* ── Single galaxy point ─────────────────────────────────── */
+/* ── Single galaxy ──────────────────────────────────────── */
 
 function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
   const spriteRef = useRef<THREE.Sprite>(null);
@@ -74,17 +160,17 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
     return galaxyTypeColor(gtype);
   }, [galaxy.type, galaxy.galaxyType]);
 
+  const texture = useMemo(() => getGalaxyTexture(getShapeForType(galaxy)), [galaxy]);
+
   const isSelected = selectedGalaxy?.id === galaxy.id;
   const isLocalGroup = (galaxy.distanceMpc ?? 20) < LOCAL_GROUP_MPC;
   const mag = galaxy.magnitude ?? 12;
 
-  // Size based on magnitude and distance layer
   const size = useMemo(() => {
-    const base = Math.max(0.06, 0.5 - (mag - 3) * 0.035);
+    const base = Math.max(0.04, 0.35 - (mag - 3) * 0.025);
     return isLocalGroup ? base * 1.2 : base;
   }, [mag, isLocalGroup]);
 
-  // Whether to show label: well-known always, bright (mag < 8) always, others only when close
   const shouldShowLabel = useMemo(() => {
     if (!showLabels) return false;
     if (isSelected) return true;
@@ -93,7 +179,6 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
     return false;
   }, [showLabels, isSelected, galaxy.name, mag]);
 
-  // For dimmer galaxies, show label only when camera is near
   const [showDistanceLabel, setShowDistanceLabel] = useState(false);
 
   const handleClick = useCallback(
@@ -104,36 +189,20 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
     [galaxy, setSelectedGalaxy],
   );
 
-  // Sprite scale based on morphology
-  const spriteScale = useMemo(
-    () => getGalaxySpriteScale(galaxy, size * 4),
-    [galaxy, size],
-  );
-
-  // Glow for bright galaxies (mag < 5)
-  const showGlow = mag < 5;
+  const scale = useMemo(() => spriteScale(galaxy, size * 3), [galaxy, size]);
 
   useFrame(({ camera }) => {
     if (!spriteRef.current) return;
-
-    // Pulse when selected
     if (isSelected) {
-      const s = 1 + 0.15 * Math.sin(Date.now() * 0.004);
-      spriteRef.current.scale.set(
-        spriteScale[0] * s,
-        spriteScale[1] * s,
-        1,
-      );
+      const s = 1 + 0.1 * Math.sin(Date.now() * 0.003);
+      spriteRef.current.scale.set(scale[0] * s, scale[1] * s, 1);
     } else {
-      spriteRef.current.scale.set(spriteScale[0], spriteScale[1], 1);
+      spriteRef.current.scale.set(scale[0], scale[1], 1);
     }
-
-    // Distance-based label visibility for non-prominent galaxies
     if (showLabels && !shouldShowLabel) {
-      const gx = galaxy.x ?? 0;
-      const gy = galaxy.y ?? 0;
-      const gz = galaxy.z ?? 0;
-      const dist = camera.position.distanceTo(new THREE.Vector3(gx, gy, gz));
+      const dist = camera.position.distanceTo(
+        new THREE.Vector3(galaxy.x ?? 0, galaxy.y ?? 0, galaxy.z ?? 0),
+      );
       setShowDistanceLabel(dist < 5);
     }
   });
@@ -141,61 +210,61 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
   const x = galaxy.x ?? 0;
   const y = galaxy.y ?? 0;
   const z = galaxy.z ?? 0;
-
   const labelVisible = shouldShowLabel || showDistanceLabel;
 
   return (
     <group position={[x, y, z]}>
-      {/* Main galaxy sprite with morphology-based scale */}
-      <sprite
-        ref={spriteRef}
-        scale={spriteScale}
-        onClick={handleClick}
-      >
+      <sprite ref={spriteRef} scale={scale} onClick={handleClick}>
         <spriteMaterial
+          map={texture}
           color={color}
           transparent
-          opacity={isSelected ? 1 : isLocalGroup ? 0.9 : 0.75}
-          sizeAttenuation={true}
+          opacity={isSelected ? 1 : isLocalGroup ? 0.9 : 0.7}
+          sizeAttenuation
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
       </sprite>
 
-      {/* Extra glow for bright galaxies (mag < 5) */}
-      {showGlow && (
-        <sprite scale={[size * 8, size * 8, 1]}>
-          <spriteMaterial
-            color={color}
-            transparent
-            opacity={isSelected ? 0.4 : 0.25}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            sizeAttenuation={true}
-          />
-        </sprite>
+      {/* Selection X marker */}
+      {isSelected && (
+        <>
+          <line>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                args={[new Float32Array([-0.3, -0.3, 0, 0.3, 0.3, 0]), 3]}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color="#44ff88" transparent opacity={0.85} />
+          </line>
+          <line>
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                args={[new Float32Array([-0.3, 0.3, 0, 0.3, -0.3, 0]), 3]}
+              />
+            </bufferGeometry>
+            <lineBasicMaterial color="#44ff88" transparent opacity={0.85} />
+          </line>
+        </>
       )}
 
       {labelVisible && (
         <Html
-          position={[0, size + 0.15, 0]}
+          position={[0, size * 1.5 + 0.12, 0]}
           center
-          style={{
-            pointerEvents: 'none',
-            userSelect: 'none',
-            whiteSpace: 'nowrap',
-          }}
+          style={{ pointerEvents: 'none', userSelect: 'none', whiteSpace: 'nowrap' }}
         >
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: isLocalGroup ? '0.55rem' : '0.45rem',
-              fontWeight: 600,
-              letterSpacing: '0.06em',
-              color: isSelected ? '#4a9eff' : 'rgba(228,228,236,0.7)',
-              textShadow: '0 0 4px rgba(0,0,0,0.8)',
-            }}
-          >
+          <span style={{
+            fontFamily: '"SF Mono", Monaco, monospace',
+            fontSize: '14px',
+            fontWeight: 600,
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+            color: isSelected ? '#44ff88' : 'rgba(204,204,238,0.7)',
+            textShadow: '0 0 6px rgba(0,0,0,0.9)',
+          }}>
             {galaxy.name}
           </span>
         </Html>
@@ -204,7 +273,7 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
   );
 }
 
-/* ── Scene contents ──────────────────────────────────────── */
+/* ── Scene contents ─────────────────────────────────────── */
 
 function SceneContents() {
   const galaxies = useGalaxyStore((s) => s.galaxies);
@@ -217,7 +286,6 @@ function SceneContents() {
     return galaxies.filter((g) => {
       if (g.magnitude != null && g.magnitude > maxMagnitude) return false;
       if (filterType !== 'all') {
-        // Match on galaxyType enum OR the raw type string
         const gtype = g.galaxyType ?? '';
         const rawType = g.type.toLowerCase();
         if (filterType === 'spiral' && gtype !== 'spiral' && !rawType.includes('spiral')) return false;
@@ -245,7 +313,6 @@ function SceneContents() {
         <GalaxyPoint key={g.id} galaxy={g} />
       ))}
 
-      {/* Click on empty space deselects */}
       <mesh visible={false} onClick={handleMiss}>
         <sphereGeometry args={[200, 8, 8]} />
         <meshBasicMaterial side={THREE.BackSide} />
@@ -261,13 +328,13 @@ function SceneContents() {
   );
 }
 
-/* ── Exported canvas wrapper ─────────────────────────────── */
+/* ── Canvas wrapper ─────────────────────────────────────── */
 
 export function GalaxyScene() {
   return (
     <Canvas
       camera={{ position: [6, 4, 10], fov: 55, near: 0.1, far: 500 }}
-      style={{ width: '100%', height: '100%', background: '#08080d' }}
+      style={{ width: '100%', height: '100%', background: '#050508' }}
       gl={{ antialias: true }}
     >
       <SceneContents />
