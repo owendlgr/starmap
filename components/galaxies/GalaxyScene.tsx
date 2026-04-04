@@ -1,122 +1,207 @@
 'use client';
 
-import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
+import { useRef, useMemo, useCallback, useState } from 'react';
 import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Stars, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGalaxyStore } from '@/lib/stores/galaxyStore';
 import { galaxyTypeColor } from '@/lib/data/galaxyCatalog';
 import { MilkyWayOutline } from './MilkyWayOutline';
-import type { GalaxyData } from '@/lib/types';
+import type { GalaxyData, GalaxyType } from '@/lib/types';
 
-/* ── Procedural gradient textures per morphology ─────────── */
+/* ══════════════════════════════════════════════════════════════
+   Procedural 3D galaxy particle generators.
+   Each function returns a Float32Array of [x, y, z, ...] positions
+   distributed to match the morphology of that galaxy type.
+   ══════════════════════════════════════════════════════════════ */
 
-const TEX_SIZE = 128;
+/** Seeded pseudo-random for deterministic galaxies. */
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
 
-/** Create a soft radial gradient on a canvas — the core of every galaxy sprite. */
-function makeGradientCanvas(
-  shape: 'circle' | 'ellipse' | 'spiral' | 'irregular',
-): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = TEX_SIZE;
-  c.height = TEX_SIZE;
-  const ctx = c.getContext('2d')!;
-  const cx = TEX_SIZE / 2;
-  const cy = TEX_SIZE / 2;
-  const r = TEX_SIZE / 2;
+/** Simple hash of string → seed integer. */
+function hashSeed(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  return (h >>> 0) + 1;
+}
 
-  if (shape === 'spiral') {
-    // Core glow + faint spiral hint
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.08, 'rgba(255,255,255,0.9)');
-    grad.addColorStop(0.2, 'rgba(255,255,255,0.5)');
-    grad.addColorStop(0.45, 'rgba(255,255,255,0.15)');
-    grad.addColorStop(0.7, 'rgba(255,255,255,0.04)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
-    // Add two faint spiral arm arcs
-    ctx.globalAlpha = 0.12;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 6;
-    for (let arm = 0; arm < 2; arm++) {
-      ctx.beginPath();
-      const startAngle = arm * Math.PI;
-      for (let t = 0; t < 120; t++) {
-        const angle = startAngle + t * 0.06;
-        const dist = 8 + t * 0.38;
-        const x = cx + Math.cos(angle) * dist;
-        const y = cy + Math.sin(angle) * dist;
-        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
+/** Gaussian random from uniform pair (Box-Muller). */
+function gaussian(rng: () => number): number {
+  const u1 = Math.max(1e-10, rng());
+  const u2 = rng();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+/* ── Spiral galaxy ─────────────────────────────────────────── */
+
+function generateSpiral(count: number, rng: () => number): Float32Array {
+  const pts = new Float32Array(count * 3);
+  const arms = 2 + Math.floor(rng() * 2); // 2-3 arms
+  const twist = 2.5 + rng() * 1.5;        // tightness
+  const diskH = 0.02;                      // thin disk
+
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+    if (i < count * 0.2) {
+      // Central bulge — 20% of particles
+      const r = Math.abs(gaussian(rng)) * 0.12;
+      const theta = rng() * Math.PI * 2;
+      const phi = rng() * Math.PI * 2;
+      pts[i3]     = r * Math.sin(phi) * Math.cos(theta);
+      pts[i3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.6;
+      pts[i3 + 2] = r * Math.cos(phi);
+    } else {
+      // Arm particles
+      const arm = Math.floor(rng() * arms);
+      const armOffset = (arm / arms) * Math.PI * 2;
+      const dist = 0.05 + rng() * 0.45;                    // 0.05–0.50
+      const angle = armOffset + dist * twist;
+      const spread = 0.03 * (0.5 + dist);                  // wider at edge
+      const dx = gaussian(rng) * spread;
+      const dy = gaussian(rng) * diskH * (0.5 + dist);
+      const dz = gaussian(rng) * spread;
+      pts[i3]     = Math.cos(angle) * dist + dx;
+      pts[i3 + 1] = dy;
+      pts[i3 + 2] = Math.sin(angle) * dist + dz;
     }
-    ctx.globalAlpha = 1;
-  } else if (shape === 'ellipse') {
-    // Smooth elliptical falloff
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.1, 'rgba(255,255,255,0.8)');
-    grad.addColorStop(0.3, 'rgba(255,255,255,0.35)');
-    grad.addColorStop(0.6, 'rgba(255,255,255,0.08)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
-  } else if (shape === 'irregular') {
-    // Asymmetric blob using offset gradients
-    const grad1 = ctx.createRadialGradient(cx - 8, cy + 5, 0, cx, cy, r * 0.8);
-    grad1.addColorStop(0, 'rgba(255,255,255,0.9)');
-    grad1.addColorStop(0.25, 'rgba(255,255,255,0.4)');
-    grad1.addColorStop(0.6, 'rgba(255,255,255,0.08)');
-    grad1.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad1;
-    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
-    const grad2 = ctx.createRadialGradient(cx + 12, cy - 8, 0, cx + 12, cy - 8, r * 0.5);
-    grad2.addColorStop(0, 'rgba(255,255,255,0.5)');
-    grad2.addColorStop(0.4, 'rgba(255,255,255,0.15)');
-    grad2.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad2;
-    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
-  } else {
-    // Circle — default soft dot
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.12, 'rgba(255,255,255,0.7)');
-    grad.addColorStop(0.35, 'rgba(255,255,255,0.25)');
-    grad.addColorStop(0.65, 'rgba(255,255,255,0.05)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, TEX_SIZE, TEX_SIZE);
   }
-  return c;
+  return pts;
 }
 
-/** Cached textures — one per shape, shared across all galaxies. */
-const textureCache = new Map<string, THREE.CanvasTexture>();
+/* ── Elliptical galaxy ─────────────────────────────────────── */
 
-function getGalaxyTexture(shape: 'circle' | 'ellipse' | 'spiral' | 'irregular'): THREE.CanvasTexture {
-  if (textureCache.has(shape)) return textureCache.get(shape)!;
-  const canvas = makeGradientCanvas(shape);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
-  textureCache.set(shape, tex);
-  return tex;
+function generateElliptical(count: number, rng: () => number): Float32Array {
+  const pts = new Float32Array(count * 3);
+  const ax = 0.25 + rng() * 0.1;  // semi-axes
+  const ay = 0.20 + rng() * 0.08;
+  const az = 0.18 + rng() * 0.08;
+
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+    // 3D gaussian — concentrated in center, diffuse at edge
+    pts[i3]     = gaussian(rng) * ax * 0.4;
+    pts[i3 + 1] = gaussian(rng) * ay * 0.4;
+    pts[i3 + 2] = gaussian(rng) * az * 0.4;
+  }
+  return pts;
 }
 
-function getShapeForType(galaxy: GalaxyData): 'circle' | 'ellipse' | 'spiral' | 'irregular' {
+/* ── Lenticular galaxy ─────────────────────────────────────── */
+
+function generateLenticular(count: number, rng: () => number): Float32Array {
+  const pts = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+    if (i < count * 0.35) {
+      // Bulge (35%)
+      const r = Math.abs(gaussian(rng)) * 0.1;
+      const theta = rng() * Math.PI * 2;
+      const phi = rng() * Math.PI;
+      pts[i3]     = r * Math.sin(phi) * Math.cos(theta);
+      pts[i3 + 1] = r * Math.cos(phi) * 0.5;
+      pts[i3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    } else {
+      // Disk (65%) — flat with no spiral structure
+      const dist = 0.05 + rng() * 0.4;
+      const angle = rng() * Math.PI * 2;
+      const diskH = 0.008 * (1 + dist);
+      pts[i3]     = Math.cos(angle) * dist + gaussian(rng) * 0.015;
+      pts[i3 + 1] = gaussian(rng) * diskH;
+      pts[i3 + 2] = Math.sin(angle) * dist + gaussian(rng) * 0.015;
+    }
+  }
+  return pts;
+}
+
+/* ── Irregular galaxy ──────────────────────────────────────── */
+
+function generateIrregular(count: number, rng: () => number): Float32Array {
+  const pts = new Float32Array(count * 3);
+  // 2-4 random clumps
+  const clumps = 2 + Math.floor(rng() * 3);
+  const cx: number[] = [], cy: number[] = [], cz: number[] = [], cr: number[] = [];
+  for (let c = 0; c < clumps; c++) {
+    cx.push((rng() - 0.5) * 0.3);
+    cy.push((rng() - 0.5) * 0.2);
+    cz.push((rng() - 0.5) * 0.3);
+    cr.push(0.06 + rng() * 0.12);
+  }
+
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+    const c = Math.floor(rng() * clumps);
+    pts[i3]     = cx[c] + gaussian(rng) * cr[c];
+    pts[i3 + 1] = cy[c] + gaussian(rng) * cr[c] * 0.7;
+    pts[i3 + 2] = cz[c] + gaussian(rng) * cr[c];
+  }
+  return pts;
+}
+
+/* ── Dwarf galaxy ──────────────────────────────────────────── */
+
+function generateDwarf(count: number, rng: () => number): Float32Array {
+  const pts = new Float32Array(count * 3);
+  const r = 0.08 + rng() * 0.06;
+
+  for (let i = 0; i < count; i++) {
+    const i3 = i * 3;
+    pts[i3]     = gaussian(rng) * r;
+    pts[i3 + 1] = gaussian(rng) * r * 0.8;
+    pts[i3 + 2] = gaussian(rng) * r;
+  }
+  return pts;
+}
+
+/* ── Generator dispatcher ──────────────────────────────────── */
+
+function generateGalaxyParticles(
+  galaxy: GalaxyData,
+  count: number,
+): Float32Array {
+  const rng = seededRandom(hashSeed(galaxy.id));
   const gtype = (galaxy.galaxyType ?? galaxy.type ?? '').toLowerCase();
-  if (gtype.includes('spiral')) return 'spiral';
-  if (gtype.includes('elliptical') || gtype.includes('lenticular')) return 'ellipse';
-  if (gtype.includes('irregular')) return 'irregular';
-  return 'circle'; // dwarf, unknown
+
+  if (gtype.includes('spiral')) return generateSpiral(count, rng);
+  if (gtype.includes('elliptical')) return generateElliptical(count, rng);
+  if (gtype.includes('lenticular')) return generateLenticular(count, rng);
+  if (gtype.includes('irregular')) return generateIrregular(count, rng);
+  if (gtype.includes('dwarf')) return generateDwarf(count, rng);
+  return generateElliptical(count, rng); // fallback
 }
 
-/* ── Distance threshold for Local Group ─────────────────── */
+/* ── Shared glow texture for particles ─────────────────────── */
+
+let _glowTex: THREE.CanvasTexture | null = null;
+function glowTexture(): THREE.CanvasTexture {
+  if (_glowTex) return _glowTex;
+  const s = 64;
+  const c = document.createElement('canvas');
+  c.width = s; c.height = s;
+  const ctx = c.getContext('2d')!;
+  const grad = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.15, 'rgba(255,255,255,0.7)');
+  grad.addColorStop(0.4, 'rgba(255,255,255,0.2)');
+  grad.addColorStop(0.7, 'rgba(255,255,255,0.04)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, s, s);
+  _glowTex = new THREE.CanvasTexture(c);
+  _glowTex.needsUpdate = true;
+  return _glowTex;
+}
+
+/* ── Constants ─────────────────────────────────────────────── */
 
 const LOCAL_GROUP_MPC = 1.5;
-
-/* ── Well-known galaxy names that always show labels ────── */
+const LABEL_MAG_THRESHOLD = 8;
 
 const WELL_KNOWN_NAMES = [
   'andromeda', 'triangulum', 'sombrero', 'whirlpool', 'pinwheel',
@@ -133,43 +218,71 @@ function isWellKnown(name: string): boolean {
   return WELL_KNOWN_NAMES.some((wk) => lower.includes(wk));
 }
 
-const LABEL_MAG_THRESHOLD = 8;
+/* ── Particle count by brightness ──────────────────────────── */
 
-/* ── Sprite scale per morphology ────────────────────────── */
-
-function spriteScale(galaxy: GalaxyData, base: number): [number, number, number] {
-  const gtype = (galaxy.galaxyType ?? galaxy.type ?? '').toLowerCase();
-  if (gtype.includes('spiral')) return [base * 1.4, base, 1];
-  if (gtype.includes('elliptical')) return [base, base, 1];
-  if (gtype.includes('lenticular')) return [base * 1.3, base * 0.6, 1];
-  if (gtype.includes('irregular')) return [base * 1.1, base * 0.85, 1];
-  if (gtype.includes('dwarf')) return [base * 0.6, base * 0.6, 1];
-  return [base * 0.8, base * 0.8, 1];
+function particleCount(mag: number, isLocalGroup: boolean): number {
+  // Bright nearby → more particles, faint distant → fewer
+  const base = Math.max(40, Math.round(400 - (mag - 1) * 30));
+  return isLocalGroup ? Math.min(600, base * 2) : Math.min(400, base);
 }
 
-/* ── Single galaxy ──────────────────────────────────────── */
+/* ── Scale factor by magnitude ─────────────────────────────── */
 
-function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
-  const spriteRef = useRef<THREE.Sprite>(null);
+function galaxyScale(mag: number, isLocalGroup: boolean): number {
+  const base = Math.max(0.15, 1.2 - (mag - 1) * 0.08);
+  return isLocalGroup ? base * 1.3 : base;
+}
+
+/* ── Single 3D galaxy ──────────────────────────────────────── */
+
+function GalaxyModel({ galaxy }: { galaxy: GalaxyData }) {
+  const groupRef = useRef<THREE.Group>(null);
   const setSelectedGalaxy = useGalaxyStore((s) => s.setSelectedGalaxy);
   const selectedGalaxy = useGalaxyStore((s) => s.selectedGalaxy);
   const showLabels = useGalaxyStore((s) => s.showLabels);
-
-  const color = useMemo(() => {
-    const gtype = galaxy.galaxyType ?? galaxy.type.toLowerCase();
-    return galaxyTypeColor(gtype);
-  }, [galaxy.type, galaxy.galaxyType]);
-
-  const texture = useMemo(() => getGalaxyTexture(getShapeForType(galaxy)), [galaxy]);
 
   const isSelected = selectedGalaxy?.id === galaxy.id;
   const isLocalGroup = (galaxy.distanceMpc ?? 20) < LOCAL_GROUP_MPC;
   const mag = galaxy.magnitude ?? 12;
 
-  const size = useMemo(() => {
-    const base = Math.max(0.04, 0.35 - (mag - 3) * 0.025);
-    return isLocalGroup ? base * 1.2 : base;
-  }, [mag, isLocalGroup]);
+  const color = useMemo(() => {
+    return new THREE.Color(galaxyTypeColor(galaxy.galaxyType ?? galaxy.type.toLowerCase()));
+  }, [galaxy.type, galaxy.galaxyType]);
+
+  const count = useMemo(() => particleCount(mag, isLocalGroup), [mag, isLocalGroup]);
+  const scale = useMemo(() => galaxyScale(mag, isLocalGroup), [mag, isLocalGroup]);
+
+  // Generate deterministic particle positions
+  const geometry = useMemo(() => {
+    const positions = generateGalaxyParticles(galaxy, count);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    // Per-particle opacity: brighter near center
+    const opacities = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      const x = positions[i * 3];
+      const y = positions[i * 3 + 1];
+      const z = positions[i * 3 + 2];
+      const dist = Math.sqrt(x * x + y * y + z * z);
+      opacities[i] = Math.max(0.3, 1 - dist * 2.5);
+    }
+    geo.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
+
+    return geo;
+  }, [galaxy, count]);
+
+  const tex = useMemo(() => glowTexture(), []);
+
+  // Deterministic tilt so each galaxy faces a unique direction
+  const tilt = useMemo(() => {
+    const rng = seededRandom(hashSeed(galaxy.id + '_tilt'));
+    return new THREE.Euler(
+      (rng() - 0.5) * Math.PI * 0.6,
+      rng() * Math.PI * 2,
+      (rng() - 0.5) * Math.PI * 0.3,
+    );
+  }, [galaxy.id]);
 
   const shouldShowLabel = useMemo(() => {
     if (!showLabels) return false;
@@ -189,16 +302,11 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
     [galaxy, setSelectedGalaxy],
   );
 
-  const scale = useMemo(() => spriteScale(galaxy, size * 3), [galaxy, size]);
-
+  // Slow rotation + distance-based label check
   useFrame(({ camera }) => {
-    if (!spriteRef.current) return;
-    if (isSelected) {
-      const s = 1 + 0.1 * Math.sin(Date.now() * 0.003);
-      spriteRef.current.scale.set(scale[0] * s, scale[1] * s, 1);
-    } else {
-      spriteRef.current.scale.set(scale[0], scale[1], 1);
-    }
+    if (!groupRef.current) return;
+    groupRef.current.rotation.y += 0.0008;
+
     if (showLabels && !shouldShowLabel) {
       const dist = camera.position.distanceTo(
         new THREE.Vector3(galaxy.x ?? 0, galaxy.y ?? 0, galaxy.z ?? 0),
@@ -212,19 +320,31 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
   const z = galaxy.z ?? 0;
   const labelVisible = shouldShowLabel || showDistanceLabel;
 
+  // Particle size — smaller for faint, larger for bright
+  const ptSize = Math.max(0.008, 0.04 - mag * 0.002);
+
   return (
     <group position={[x, y, z]}>
-      <sprite ref={spriteRef} scale={scale} onClick={handleClick}>
-        <spriteMaterial
-          map={texture}
-          color={color}
-          transparent
-          opacity={isSelected ? 1 : isLocalGroup ? 0.9 : 0.7}
-          sizeAttenuation
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </sprite>
+      <group ref={groupRef} rotation={tilt} scale={[scale, scale, scale]}>
+        <points geometry={geometry} onClick={handleClick}>
+          <pointsMaterial
+            map={tex}
+            color={color}
+            size={ptSize}
+            transparent
+            opacity={isSelected ? 1 : 0.85}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            sizeAttenuation
+          />
+        </points>
+      </group>
+
+      {/* Invisible click sphere for easier selection */}
+      <mesh visible={false} onClick={handleClick}>
+        <sphereGeometry args={[scale * 0.35, 8, 8]} />
+        <meshBasicMaterial />
+      </mesh>
 
       {/* Selection X marker */}
       {isSelected && (
@@ -233,7 +353,7 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
             <bufferGeometry>
               <bufferAttribute
                 attach="attributes-position"
-                args={[new Float32Array([-0.3, -0.3, 0, 0.3, 0.3, 0]), 3]}
+                args={[new Float32Array([-0.25, -0.25, 0, 0.25, 0.25, 0]), 3]}
               />
             </bufferGeometry>
             <lineBasicMaterial color="#44ff88" transparent opacity={0.85} />
@@ -242,7 +362,7 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
             <bufferGeometry>
               <bufferAttribute
                 attach="attributes-position"
-                args={[new Float32Array([-0.3, 0.3, 0, 0.3, -0.3, 0]), 3]}
+                args={[new Float32Array([-0.25, 0.25, 0, 0.25, -0.25, 0]), 3]}
               />
             </bufferGeometry>
             <lineBasicMaterial color="#44ff88" transparent opacity={0.85} />
@@ -252,7 +372,7 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
 
       {labelVisible && (
         <Html
-          position={[0, size * 1.5 + 0.12, 0]}
+          position={[0, scale * 0.4 + 0.1, 0]}
           center
           style={{ pointerEvents: 'none', userSelect: 'none', whiteSpace: 'nowrap' }}
         >
@@ -273,7 +393,7 @@ function GalaxyPoint({ galaxy }: { galaxy: GalaxyData }) {
   );
 }
 
-/* ── Scene contents ─────────────────────────────────────── */
+/* ── Scene contents ─────────────────────────────────────────── */
 
 function SceneContents() {
   const galaxies = useGalaxyStore((s) => s.galaxies);
@@ -304,13 +424,13 @@ function SceneContents() {
 
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <Stars radius={100} depth={60} count={2000} factor={3} fade speed={0.5} />
+      <ambientLight intensity={0.4} />
+      <Stars radius={100} depth={60} count={2500} factor={3} fade speed={0.3} />
 
       {showMilkyWay && <MilkyWayOutline />}
 
       {filtered.map((g) => (
-        <GalaxyPoint key={g.id} galaxy={g} />
+        <GalaxyModel key={g.id} galaxy={g} />
       ))}
 
       <mesh visible={false} onClick={handleMiss}>
@@ -321,19 +441,19 @@ function SceneContents() {
       <OrbitControls
         enableDamping
         dampingFactor={0.12}
-        minDistance={1}
+        minDistance={0.5}
         maxDistance={80}
       />
     </>
   );
 }
 
-/* ── Canvas wrapper ─────────────────────────────────────── */
+/* ── Canvas wrapper ─────────────────────────────────────────── */
 
 export function GalaxyScene() {
   return (
     <Canvas
-      camera={{ position: [6, 4, 10], fov: 55, near: 0.1, far: 500 }}
+      camera={{ position: [6, 4, 10], fov: 55, near: 0.01, far: 500 }}
       style={{ width: '100%', height: '100%', background: '#050508' }}
       gl={{ antialias: true }}
     >
