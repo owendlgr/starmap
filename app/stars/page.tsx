@@ -44,7 +44,7 @@ function StarLayerPanel() {
   } = useStore();
 
   return (
-    <div className="layer-panel" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+    <div className="layer-panel">
       <div className="layer-panel-header">
         <span>LAYERS</span>
       </div>

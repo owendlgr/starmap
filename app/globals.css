@@ -431,7 +431,7 @@ input, select, textarea { font-family: var(--font); font-size: 14px; }
   top: 10px;
   left: 10px;
   width: var(--layer-w);
-  max-height: 70vh;
+  max-height: calc(100vh - 80px);
   overflow-y: auto;
   background: var(--bg-body);
   border: 1px solid var(--border);
